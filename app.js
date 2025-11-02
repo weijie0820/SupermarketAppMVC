@@ -17,6 +17,9 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
+// Import products controller (MVC)
+const ProductsController = require('./controllers/ProductsControllers');
+
 const connection = mysql.createConnection({
     host: 'localhost',
     user: 'root',
@@ -41,6 +44,12 @@ app.use(express.urlencoded({
     extended: false
 }));
 
+// Make session user available to all views (so controllers can render without extra params)
+app.use((req, res, next) => {
+    res.locals.user = req.session ? req.session.user : null;
+    next();
+});
+
 //TO DO: Insert code for Session Middleware below 
 app.use(session({
     secret: 'secret',
@@ -64,7 +73,7 @@ const checkAuthenticated = (req, res, next) => {
 
 // Middleware to check if user is admin
 const checkAdmin = (req, res, next) => {
-    if (req.session.user.role === 'admin') {
+    if (req.session.user && req.session.user.role === 'admin') {
         return next();
     } else {
         req.flash('error', 'Access denied');
@@ -89,24 +98,19 @@ const validateRegistration = (req, res, next) => {
 };
 
 // Define routes
-app.get('/',  (req, res) => {
-    res.render('index', {user: req.session.user} );
-});
 
-app.get('/inventory', checkAuthenticated, checkAdmin, (req, res) => {
-    // Fetch data from MySQL
-    connection.query('SELECT * FROM products', (error, results) => {
-      if (error) throw error;
-      res.render('inventory', { products: results, user: req.session.user });
-    });
-});
+// Home -> list products (controller handles rendering)
+app.get('/', ProductsController.list);
 
+// Inventory (admin) -> list products (controller handles rendering). protect with auth/admin.
+app.get('/inventory', checkAuthenticated, checkAdmin, ProductsController.list);
+
+// Register / Login (these still use DB connection for users)
 app.get('/register', (req, res) => {
     res.render('register', { messages: req.flash('error'), formData: req.flash('formData')[0] });
 });
 
 app.post('/register', validateRegistration, (req, res) => {
-
     const { username, email, password, address, contact, role } = req.body;
 
     const sql = 'INSERT INTO users (username, email, password, address, contact, role) VALUES (?, ?, SHA1(?), ?, ?, ?)';
@@ -114,7 +118,6 @@ app.post('/register', validateRegistration, (req, res) => {
         if (err) {
             throw err;
         }
-        console.log(result);
         req.flash('success', 'Registration successful! Please log in.');
         res.redirect('/login');
     });
@@ -127,7 +130,6 @@ app.get('/login', (req, res) => {
 app.post('/login', (req, res) => {
     const { email, password } = req.body;
 
-    // Validate email and password
     if (!email || !password) {
         req.flash('error', 'All fields are required.');
         return res.redirect('/login');
@@ -140,7 +142,6 @@ app.post('/login', (req, res) => {
         }
 
         if (results.length > 0) {
-            // Successful login
             req.session.user = results[0]; 
             req.flash('success', 'Login successful!');
             if(req.session.user.role == 'user')
@@ -148,21 +149,16 @@ app.post('/login', (req, res) => {
             else
                 res.redirect('/inventory');
         } else {
-            // Invalid credentials
             req.flash('error', 'Invalid email or password.');
             res.redirect('/login');
         }
     });
 });
 
-app.get('/shopping', checkAuthenticated, (req, res) => {
-    // Fetch data from MySQL
-    connection.query('SELECT * FROM products', (error, results) => {
-        if (error) throw error;
-        res.render('shopping', { user: req.session.user, products: results });
-      });
-});
+// Shopping -> reuse controller to list products (controller will render)
+app.get('/shopping', checkAuthenticated, ProductsController.list);
 
+// Add-to-cart, cart and logout still use session + connection for product lookup
 app.post('/add-to-cart/:id', checkAuthenticated, (req, res) => {
     const productId = parseInt(req.params.id);
     const quantity = parseInt(req.body.quantity) || 1;
@@ -173,18 +169,16 @@ app.post('/add-to-cart/:id', checkAuthenticated, (req, res) => {
         if (results.length > 0) {
             const product = results[0];
 
-            // Initialize cart in session if not exists
             if (!req.session.cart) {
                 req.session.cart = [];
             }
 
-            // Check if product already in cart
             const existingItem = req.session.cart.find(item => item.productId === productId);
             if (existingItem) {
                 existingItem.quantity += quantity;
             } else {
                 req.session.cart.push({
-                    id: product.productId,
+                    id: product.id,
                     productName: product.productName,
                     price: product.price,
                     quantity: quantity,
@@ -209,109 +203,23 @@ app.get('/logout', (req, res) => {
     res.redirect('/');
 });
 
-app.get('/product/:id', checkAuthenticated, (req, res) => {
-  // Extract the product ID from the request parameters
-  const productId = req.params.id;
+// Product detail -> controller handles rendering
+app.get('/product/:id', checkAuthenticated, ProductsController.getById);
 
-  // Fetch data from MySQL based on the product ID
-  connection.query('SELECT * FROM products WHERE id = ?', [productId], (error, results) => {
-      if (error) throw error;
+// Add product form -> controller renders form (admin protected)
+app.get('/addProduct', checkAuthenticated, checkAdmin, ProductsController.renderAddForm);
 
-      // Check if any product with the given ID was found
-      if (results.length > 0) {
-          // Render HTML page with the product data
-          res.render('product', { product: results[0], user: req.session.user  });
-      } else {
-          // If no product with the given ID was found, render a 404 page or handle it accordingly
-          res.status(404).send('Product not found');
-      }
-  });
-});
+// Add product (file upload) -> controller handles insert
+app.post('/addProduct', checkAuthenticated, checkAdmin, upload.single('image'), ProductsController.add);
 
-app.get('/addProduct', checkAuthenticated, checkAdmin, (req, res) => {
-    res.render('addProduct', {user: req.session.user } ); 
-});
+// Render edit/update form (admin) -> controller renders edit page
+app.get('/updateProduct/:id', checkAuthenticated, checkAdmin, ProductsController.renderEditForm);
 
-app.post('/addProduct', upload.single('image'),  (req, res) => {
-    // Extract product data from the request body
-    const { name, quantity, price} = req.body;
-    let image;
-    if (req.file) {
-        image = req.file.filename; // Save only the filename
-    } else {
-        image = null;
-    }
+// Update product (file upload) -> controller handles update
+app.post('/updateProduct/:id', checkAuthenticated, checkAdmin, upload.single('image'), ProductsController.update);
 
-    const sql = 'INSERT INTO products (productName, quantity, price, image) VALUES (?, ?, ?, ?)';
-    // Insert the new product into the database
-    connection.query(sql , [name, quantity, price, image], (error, results) => {
-        if (error) {
-            // Handle any error that occurs during the database operation
-            console.error("Error adding product:", error);
-            res.status(500).send('Error adding product');
-        } else {
-            // Send a success response
-            res.redirect('/inventory');
-        }
-    });
-});
-
-app.get('/updateProduct/:id',checkAuthenticated, checkAdmin, (req,res) => {
-    const productId = req.params.id;
-    const sql = 'SELECT * FROM products WHERE id = ?';
-
-    // Fetch data from MySQL based on the product ID
-    connection.query(sql , [productId], (error, results) => {
-        if (error) throw error;
-
-        // Check if any product with the given ID was found
-        if (results.length > 0) {
-            // Render HTML page with the product data
-            res.render('updateProduct', { product: results[0] });
-        } else {
-            // If no product with the given ID was found, render a 404 page or handle it accordingly
-            res.status(404).send('Product not found');
-        }
-    });
-});
-
-app.post('/updateProduct/:id', upload.single('image'), (req, res) => {
-    const productId = req.params.id;
-    // Extract product data from the request body
-    const { name, quantity, price } = req.body;
-    let image  = req.body.currentImage; //retrieve current image filename
-    if (req.file) { //if new image is uploaded
-        image = req.file.filename; // set image to be new image filename
-    } 
-
-    const sql = 'UPDATE products SET productName = ? , quantity = ?, price = ?, image =? WHERE id = ?';
-    // Insert the new product into the database
-    connection.query(sql, [name, quantity, price, image, productId], (error, results) => {
-        if (error) {
-            // Handle any error that occurs during the database operation
-            console.error("Error updating product:", error);
-            res.status(500).send('Error updating product');
-        } else {
-            // Send a success response
-            res.redirect('/inventory');
-        }
-    });
-});
-
-app.get('/deleteProduct/:id', (req, res) => {
-    const productId = req.params.id;
-
-    connection.query('DELETE FROM products WHERE id = ?', [productId], (error, results) => {
-        if (error) {
-            // Handle any error that occurs during the database operation
-            console.error("Error deleting product:", error);
-            res.status(500).send('Error deleting product');
-        } else {
-            // Send a success response
-            res.redirect('/inventory');
-        }
-    });
-});
+// Delete product -> controller handles deletion
+app.get('/deleteProduct/:id', checkAuthenticated, checkAdmin, ProductsController.delete);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on URL address: http://localhost:${PORT}/`));
