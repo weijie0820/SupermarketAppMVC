@@ -4,6 +4,12 @@ const session = require('express-session');
 const flash = require('connect-flash');
 const multer = require('multer');
 const app = express();
+const bodyParser = require('body-parser');
+const path = require('path');
+const Qrcode = require('qrcode');
+const randomstring = require('randomstring');
+const nodemailer = require('nodemailer');
+
 
 // Set up multer for file uploads
 const storage = multer.diskStorage({
@@ -14,6 +20,8 @@ const storage = multer.diskStorage({
         cb(null, file.originalname); 
     }
 });
+
+
 
 const upload = multer({ storage: storage });
 
@@ -42,6 +50,10 @@ app.use(express.static('public'));
 // enable form processing
 app.use(express.urlencoded({
     extended: false
+}));
+
+app.use(bodyParser.urlencoded({
+  extended: false
 }));
 
 // Make session user available to all views (so controllers can render without extra params)
@@ -83,9 +95,9 @@ const checkAdmin = (req, res, next) => {
 
 // Middleware for form validation
 const validateRegistration = (req, res, next) => {
-    const { username, email, password, address, contact, role } = req.body;
+    const { username, password, address, contact, } = req.body;
 
-    if (!username || !email || !password || !address || !contact || !role) {
+    if (!username || !password || !address || !contact ) {
         return res.status(400).send('All fields are required.');
     }
     
@@ -96,6 +108,91 @@ const validateRegistration = (req, res, next) => {
     }
     next();
 };
+
+//email otp//
+const otpCache = {};
+// optionally set TTL cleanup; simple approach below:
+function setOTP(email, otp, ttlMs = 3 * 60 * 1000) { // 3 minutes
+  otpCache[email] = { code: otp, expiresAt: Date.now() + ttlMs };
+  // auto-cleanup after ttl
+  setTimeout(() => {
+    if (otpCache[email] && otpCache[email].expiresAt <= Date.now()) {
+      delete otpCache[email];
+    }
+  }, ttlMs + 1000);
+}
+
+// generate numeric OTP
+function generateOTP() {
+  return randomstring.generate({ length: 6, charset: 'numeric' });
+}
+
+// send OTP via nodemailer using environment variables
+async function sendOTP(email, otp) {
+  const transport = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.EMAIL_USER,     // e.g. ibankingabc@gmail.com (put in .env)
+      pass: process.env.EMAIL_PASS      // app password (put in .env)
+    },
+    tls: { rejectUnauthorized: false }
+  });
+
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: email,
+    subject: 'OTP Verification',
+    text: `Your OTP is ${otp}`,
+    html: `<h3>Your OTP is: <b>${otp}</b></h3><p>Do not share this code with anyone.</p>`
+  };
+
+  return transport.sendMail(mailOptions);
+}
+
+// POST route to request OTP
+app.post('/reqOTP', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).send('Email is required');
+
+    const otp = generateOTP();
+    setOTP(email, otp);
+
+    // send email (await so errors show up)
+    await sendOTP(email, otp);
+
+    // redirect to OTP page with email prefilled
+    return res.redirect(`/otp?email=${encodeURIComponent(email)}&sent=1`);
+  } catch (err) {
+    console.error('Error sending OTP:', err);
+    return res.redirect(`/otp?error=${encodeURIComponent('Failed to send OTP. Try again.')}`);
+  }
+});
+
+// POST route to verify OTP
+app.post('/verifyOTP', (req, res) => {
+  const { email, otp } = req.body;
+  if (!email || !otp) {
+    return res.redirect(`/otp?error=${encodeURIComponent('Missing email or OTP')}`);
+  }
+
+  const cached = otpCache[email];
+  if (!cached || Date.now() > cached.expiresAt) {
+    // expired or missing
+    if (cached) delete otpCache[email];
+    return res.redirect(`/otp?error=${encodeURIComponent('OTP expired or invalid')}&email=${encodeURIComponent(email)}`);
+  }
+
+  if (cached.code === otp.trim()) {
+    // success
+    delete otpCache[email];
+    return res.redirect('/qrcode'); // or wherever you want successful flow to go
+  } else {
+    return res.redirect(`/otp?error=${encodeURIComponent('Invalid OTP')}&email=${encodeURIComponent(email)}`);
+  }
+});
+
+
 
 // Define routes
 
@@ -113,15 +210,23 @@ app.get('/register', (req, res) => {
 app.post('/register', validateRegistration, (req, res) => {
     const { username, email, password, address, contact, role } = req.body;
 
-    const sql = 'INSERT INTO users (username, email, password, address, contact, role) VALUES (?, ?, SHA1(?), ?, ?, ?)';
+    const sql = 'INSERT INTO users (username, email, password, address, contact, role, verified) VALUES (?, ?, SHA1(?), ?, ?, ?, 0)';
     connection.query(sql, [username, email, password, address, contact, role], (err, result) => {
         if (err) {
             throw err;
         }
-        req.flash('success', 'Registration successful! Please log in.');
-        res.redirect('/login');
+
+        // ✅ Immediately send OTP after registration
+        const otp = generateOTP();
+        setOTP(email, otp);
+        sendOTP(email, otp);
+
+        // ✅ Redirect to OTP page
+        req.flash('success', 'Registration successful! Check your email for OTP.');
+        return res.redirect(`/otp?email=${encodeURIComponent(email)}&sent=1`);
     });
 });
+
 
 app.get('/login', (req, res) => {
     res.render('login', { messages: req.flash('success'), errors: req.flash('error') });
@@ -137,22 +242,56 @@ app.post('/login', (req, res) => {
 
     const sql = 'SELECT * FROM users WHERE email = ? AND password = SHA1(?)';
     connection.query(sql, [email, password], (err, results) => {
-        if (err) {
-            throw err;
+        if (err) throw err;
+
+        // ✅ Verified user
+        if (results.length > 0 && results[0].verified == 1) {
+            req.session.user = results[0];
+            req.flash('success', 'Login successful!');
+            return results[0].role === 'user'
+                ? res.redirect('/shopping')
+                : res.redirect('/inventory');
         }
 
-        if (results.length > 0) {
-            req.session.user = results[0]; 
-            req.flash('success', 'Login successful!');
-            if(req.session.user.role == 'user')
-                res.redirect('/shopping');
-            else
-                res.redirect('/inventory');
-        } else {
+        // ❌ User exists but not verified
+        else if (results.length > 0 && results[0].verified == 0) {
+            req.flash('error', 'Please verify your email before logging in.');
+            return res.redirect('/otp?email=' + email);
+        }
+
+        // ❌ No match at all
+        else {
             req.flash('error', 'Invalid email or password.');
-            res.redirect('/login');
+            return res.redirect('/login');
         }
     });
+});
+
+
+app.post('/verifyOTP', (req, res) => {
+    const { email, otp } = req.body;
+    if (!email || !otp) {
+        return res.redirect(`/otp?error=${encodeURIComponent('Missing email or OTP')}`);
+    }
+
+    const cached = otpCache[email];
+    if (!cached || Date.now() > cached.expiresAt) {
+        if (cached) delete otpCache[email];
+        return res.redirect(`/otp?error=${encodeURIComponent('OTP expired or invalid')}&email=${encodeURIComponent(email)}`);
+    }
+
+    if (cached.code === otp.trim()) {
+        delete otpCache[email];
+
+        // ✅ Mark user verified in DB
+        connection.query(
+            'UPDATE users SET verified = 1 WHERE email = ?',
+            [email],
+            () => res.redirect('/login?verified=1')
+        );
+    } else {
+        return res.redirect(`/otp?error=${encodeURIComponent('Invalid OTP')}&email=${encodeURIComponent(email)}`);
+    }
 });
 
 // Shopping -> reuse controller to list products (controller will render)
@@ -193,6 +332,51 @@ app.post('/add-to-cart/:id', checkAuthenticated, (req, res) => {
     });
 });
 
+
+// GET route for consent page
+app.get('/verify', (req, res) => {
+  const email = req.query.email || ''; // optional: pass email from OTP or registration
+  res.render('verify', { email });
+});
+
+
+app.post('/consent', (req, res) => {
+  const { choice, email } = req.body;
+
+  if (choice === 'agree') {
+    // Mark user verified or approved in DB
+    connection.query('UPDATE users SET verified = 1 WHERE email = ?', [email], (err) => {
+      if (err) return res.status(500).send('Database error');
+      res.send('Thank you! You have agreed and registration is complete.');
+    });
+  } else {
+    res.send('You disagreed. Registration canceled.');
+  }
+});
+
+
+
+//qrcode route
+
+
+
+// QR code route
+app.use('/html', express.static(path.join(__dirname, 'html')));
+
+app.get('/qrcode', async (req, res) => {
+        const url = 'http://192.168.1.254/verify?message=Scan%20successfully';
+       
+
+    try {
+        const qrCodeUrl = await Qrcode.toDataURL(url);
+        res.render('qrcode', { qrCodeUrl }); // pass to EJS
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+
 app.get('/cart', checkAuthenticated, (req, res) => {
     const cart = req.session.cart || [];
     res.render('cart', { cart, user: req.session.user });
@@ -202,6 +386,12 @@ app.get('/logout', (req, res) => {
     req.session.destroy();
     res.redirect('/');
 });
+
+app.get('/otp', (req, res) => {
+  // Pass query strings to view so it can show messages / prefill
+  res.render('otp', { query: req.query || {} });
+});
+
 
 // Product detail -> controller handles rendering
 app.get('/product/:id', checkAuthenticated, ProductsController.getById);
