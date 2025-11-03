@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+        <meta charset="utf-8">
+        <title>Email Verification</title>  
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+        <link href="https://fonts.googleapis.com/css?family=Merriweather:300,400%7CPoppins:400,500,600" rel="stylesheet">
+        <link rel="stylesheet" type="text/css" href="../vendor/bootstrap/css/bootstrap.min.css">
+        <link rel="stylesheet" type="text/css" href="../css/OTP.css">
+	    <link rel="stylesheet" type="text/css" href="../css/main.css">
+
+        <script src="assets/components/jquery/jquery.min.js"></script>
+        <script src="assets/components/jquery/purl.js"></script>
+        <script src="assets/components/tether/js/tether.min.js"></script>
+
+    </head>
+
+
+    <body>
+        
+
+        <div class="main-container">
+            <h1>Email Verification</h1>
+            <div class="main1">
+            <!--Form to request OTP-->
+            <form action="/reqOTP" method="post">
+                <div class="form-row">
+                    <input type="email" id="emailField" name="email" class="form-control" placeholder="Enter Your Email" required>
+                    <button type="submit" id="button1" class="btn btn-secondary">Request OTP</button>
+                  <p>Check your email for the OTP. If you don’t see it within 3 minutes, please request again.</p>
+                </div>    
+            </form>  
+            </div>  
+
+            <div class="main2">
+                <!-- Form to verify OTP-->
+                <form action="/verifyOTP" method="post">
+                    <input type="hidden" id="VerifyEmail" name="email"/>
+                    <input type="text" id="otpField" class="form-control" name="otp" placeholder="Enter Your OTP" required>
+                    <button type="submit" id="button2" class="btn btn-secondary">Verify OTP</button>
+                    <div id="otpError" style="color: red; display: none; margin-top: 10px;">
+                        Invalid OTP. Please request a new one.
+                    </div>
+                    
+                </form>
+            
+            </div>
+
+            
+
+            <script> document.querySelector("#emailField").addEventListener("input", function(event) 
+                        { document.querySelector("#VerifyEmail").value = event.target.value; });
+            </script> 
+            
+            
+            <script>
+                const urlParams = new URLSearchParams(window.location.search);
+                const error = urlParams.get('error');
+                const email = urlParams.get('email');
+
+                if (error) {
+                    document.getElementById('otpError').style.display = 'block';
+                }
+
+                if (email) {
+                    document.getElementById('emailField').value = email;
+                    document.getElementById('VerifyEmail').value = email;
+                }
+            </script>
+        
+        </html>
+           
+
+    </body>
+
+
+</html>
