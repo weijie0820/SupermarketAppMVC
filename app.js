@@ -11,6 +11,7 @@ const randomstring = require('randomstring');
 const nodemailer = require('nodemailer');
 
 
+
 // Set up multer for file uploads
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
@@ -364,7 +365,8 @@ app.post('/consent', (req, res) => {
 app.use('/html', express.static(path.join(__dirname, 'html')));
 
 app.get('/qrcode', async (req, res) => {
-        const url = 'http://192.168.1.254/verify?message=Scan%20successfully';
+        const url = 'http://192.168.1.254:3000/verify?message=Scan%20successfully';
+
        
 
     try {
