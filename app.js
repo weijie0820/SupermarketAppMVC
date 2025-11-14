@@ -6,9 +6,11 @@ const multer = require('multer');
 const app = express();
 const bodyParser = require('body-parser');
 const path = require('path');
-const Qrcode = require('qrcode');
 const randomstring = require('randomstring');
 const nodemailer = require('nodemailer');
+const UserControllers = require('./controllers/UserControllers');
+const CartControllers = require('./controllers/CartControllers');
+
 
 
 
@@ -170,28 +172,7 @@ app.post('/reqOTP', async (req, res) => {
   }
 });
 
-// POST route to verify OTP
-app.post('/verifyOTP', (req, res) => {
-  const { email, otp } = req.body;
-  if (!email || !otp) {
-    return res.redirect(`/otp?error=${encodeURIComponent('Missing email or OTP')}`);
-  }
 
-  const cached = otpCache[email];
-  if (!cached || Date.now() > cached.expiresAt) {
-    // expired or missing
-    if (cached) delete otpCache[email];
-    return res.redirect(`/otp?error=${encodeURIComponent('OTP expired or invalid')}&email=${encodeURIComponent(email)}`);
-  }
-
-  if (cached.code === otp.trim()) {
-    // success
-    delete otpCache[email];
-    return res.redirect('/qrcode'); // or wherever you want successful flow to go
-  } else {
-    return res.redirect(`/otp?error=${encodeURIComponent('Invalid OTP')}&email=${encodeURIComponent(email)}`);
-  }
-});
 
 
 
@@ -211,22 +192,38 @@ app.get('/register', (req, res) => {
 app.post('/register', validateRegistration, (req, res) => {
     const { username, email, password, address, contact, role } = req.body;
 
-    const sql = 'INSERT INTO users (username, email, password, address, contact, role, verified) VALUES (?, ?, SHA1(?), ?, ?, ?, 0)';
-    connection.query(sql, [username, email, password, address, contact, role], (err, result) => {
-        if (err) {
-            throw err;
+    // 1️⃣ First check whether the email already exists
+    const checkEmailSql = "SELECT * FROM users WHERE email = ?";
+    connection.query(checkEmailSql, [email], (err, results) => {
+        if (err) throw err;
+
+        if (results.length > 0) {
+            // Email exists → block registration
+            req.flash("error", "This email is already registered. Please use another email.");
+            req.flash("formData", req.body);
+            return res.redirect("/register");
         }
 
-        // ✅ Immediately send OTP after registration
-        const otp = generateOTP();
-        setOTP(email, otp);
-        sendOTP(email, otp);
+        // 2️⃣ Insert new user since email is unique
+        const insertSql = `
+            INSERT INTO users (username, email, password, address, contact, role, verified)
+            VALUES (?, ?, SHA1(?), ?, ?, ?, 0)
+        `;
 
-        // ✅ Redirect to OTP page
-        req.flash('success', 'Registration successful! Check your email for OTP.');
-        return res.redirect(`/otp?email=${encodeURIComponent(email)}&sent=1`);
+        connection.query(insertSql, [username, email, password, address, contact, role], (err2) => {
+            if (err2) throw err2;
+
+            // 3️⃣ Generate and send OTP
+            const otp = generateOTP();
+            setOTP(email, otp);
+            sendOTP(email, otp);
+
+            req.flash("success", "Registration successful! Check your email for OTP.");
+            return res.redirect(`/otp?email=${encodeURIComponent(email)}&sent=1`);
+        });
     });
 });
+
 
 
 app.get('/login', (req, res) => {
@@ -356,29 +353,6 @@ app.post('/consent', (req, res) => {
 });
 
 
-
-//qrcode route
-
-
-
-// QR code route
-app.use('/html', express.static(path.join(__dirname, 'html')));
-
-app.get('/qrcode', async (req, res) => {
-        const url = 'http://192.168.1.254:3000/verify?message=Scan%20successfully';
-
-       
-
-    try {
-        const qrCodeUrl = await Qrcode.toDataURL(url);
-        res.render('qrcode', { qrCodeUrl }); // pass to EJS
-    } catch (err) {
-        console.error(err);
-        res.status(500).send('Internal Server Error');
-    }
-});
-
-
 app.get('/cart', checkAuthenticated, (req, res) => {
     const cart = req.session.cart || [];
     res.render('cart', { cart, user: req.session.user });
@@ -413,5 +387,8 @@ app.post('/updateProduct/:id', checkAuthenticated, checkAdmin, upload.single('im
 // Delete product -> controller handles deletion
 app.get('/deleteProduct/:id', checkAuthenticated, checkAdmin, ProductsController.delete);
 
+
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on URL address: http://localhost:${PORT}/`));
+
