@@ -98,7 +98,8 @@ const checkAdmin = (req, res, next) => {
 
 // Middleware for form validation
 const validateRegistration = (req, res, next) => {
-    const { username, password, address, contact, } = req.body;
+    const { username, email, password, address, contact } = req.body;
+    const role = 'user'; // default role for all public registrations
 
     if (!username || !password || !address || !contact ) {
         return res.status(400).send('All fields are required.');
@@ -178,8 +179,11 @@ app.post('/reqOTP', async (req, res) => {
 
 // Define routes
 
-// Home -> list products (controller handles rendering)
-app.get('/', ProductsController.list);
+app.get('/', (req, res) => {
+    // show index.ejs as the landing page
+    res.render('index', { user: req.session.user || null });
+});
+
 
 // Inventory (admin) -> list products (controller handles rendering). protect with auth/admin.
 app.get('/inventory', checkAuthenticated, checkAdmin, ProductsController.list);
@@ -293,7 +297,14 @@ app.post('/verifyOTP', (req, res) => {
 });
 
 // Shopping -> reuse controller to list products (controller will render)
-app.get('/shopping', checkAuthenticated, ProductsController.list);
+app.get('/shopping', ProductsController.list);
+
+//Cart route to increase and decrease product quantity //
+app.post('/cart/increase/:id', CartControllers.increaseQty);
+
+app.post('/cart/decrease/:id', CartControllers.decreaseQty);
+
+
 
 // Add-to-cart, cart and logout still use session + connection for product lookup
 app.post('/add-to-cart/:id', checkAuthenticated, (req, res) => {
@@ -386,6 +397,16 @@ app.post('/updateProduct/:id', checkAuthenticated, checkAdmin, upload.single('im
 
 // Delete product -> controller handles deletion
 app.get('/deleteProduct/:id', checkAuthenticated, checkAdmin, ProductsController.delete);
+
+// Admin user management page
+app.get('/admin/users', checkAuthenticated, checkAdmin, UserControllers.listUsers);
+
+// Update role
+app.post('/admin/users/update-role', checkAuthenticated, checkAdmin, UserControllers.updateRole);
+
+// Delete user
+app.post('/admin/users/delete', checkAuthenticated, checkAdmin, UserControllers.deleteUser);
+
 
 
 

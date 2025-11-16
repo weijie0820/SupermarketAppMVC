@@ -5,29 +5,30 @@ const Products = require('../models/Products');
 module.exports = {
 
     // List products depending on user role
-    list: function (req, res) {
-        const user = req.session.user;
+  list: function (req, res) {
+    const user = req.session.user;
 
-        Products.getAll(function (err, products) {
-            if (err) {
-                console.error('Error fetching products:', err);
-                return res.status(500).render('error', { error: err });
-            }
+    Products.getAll(function (err, products) {
+        if (err) {
+            console.error('Error fetching products:', err);
+            return res.status(500).render('error', { error: err });
+        }
 
-            // If NOT logged in → show homepage
-            if (!user) {
-                return res.render('index', { products, user: null });
-            }
+        // 1️⃣ Not logged in → show shopping page (view-only)
+        if (!user) {
+            return res.render('shopping', { products, user: null });
+        }
 
-            // If admin → show inventory page
-            if (user.role === 'admin') {
-                return res.render('inventory', { products, user });
-            }
+        // 2️⃣ Admin → show inventory
+        if (user.role === 'admin') {
+            return res.render('inventory', { products, user });
+        }
 
-            // If normal user → show shopping page
-            return res.render('shopping', { products, user });
-        });
-    },
+        // 3️⃣ Normal user → show shopping
+        return res.render('shopping', { products, user });
+    });
+},
+
 
     // Show product details
     getById: function (req, res) {
