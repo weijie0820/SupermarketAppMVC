@@ -34,6 +34,41 @@
       </p>
     </div>
 
+          <!--Hero video carousel-->
+          <section class="hero-carousel swiper">
+            
+            <div class="swiper-wrapper">
+
+              <!-- Slide 1 -->
+              <div class="swiper-slide">
+                <video class="hero-video" src="/video/index1.mp4" autoplay muted loop playsinline></video>
+              </div>
+
+              <!-- Slide 2 (Optional) -->
+              <div class="swiper-slide">
+                <video class="hero-video" src="/video/index2.mp4" autoplay muted loop playsinline></video>
+              </div>
+
+              <!-- Slide 3 (Optional) -->
+              <div class="swiper-slide">
+                <video class="hero-video" src="/video/index3.mp4" autoplay muted loop playsinline></video>
+              </div>
+
+            </div>
+
+            <!-- Pagination dots -->
+            <div class="swiper-pagination"></div>
+
+            <!-- Navigation arrows -->
+            <div class="swiper-button-prev"></div>
+            <div class="swiper-button-next"></div>
+
+          </section>
+
+
+
+
+
     <section class="testimonial">
       <h2 class="testimonial__title">WHAT <br> CUSTOMERS SAY</h2>
 
@@ -120,6 +155,32 @@
         }
       });
     </script>
+
+    <script>
+      const swiperHero = new Swiper('.hero-carousel', {
+        loop: true,
+        slidesPerView: 1,
+        spaceBetween: 0,
+        speed: 900,
+        effect: "fade",
+
+        autoplay: {
+          delay: 5000,
+          disableOnInteraction: false,
+        },
+
+        pagination: {
+          el: '.hero-carousel .swiper-pagination',
+          clickable: true
+        },
+
+        navigation: {
+          nextEl: '.hero-carousel .swiper-button-next',
+          prevEl: '.hero-carousel .swiper-button-prev'
+        }
+      });
+    </script>
+
 
     <%- include('partials/footer') %>
   </body>
