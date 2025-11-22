@@ -1,0 +1,313 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@100..900&display=swap');
+
+:root {
+    --first-color: hsl(266, 90%, 55%);
+    --second-color: hsl(240, 16%, 95%);
+    --title-color: hsl(0, 0%, 10%);
+    --text-color: hsl(0, 0%, 40%);
+    --white-color: hsl(0, 0%, 100%);
+    --body-color: hsl(240, 16%, 95%);
+    --container-color: hsl(0, 0%, 100%);
+
+    /*Font and typography*/
+    --body-font: "Montserrat", sans-serif;
+    --second-font: "unbounded", sans-serif;
+    --h1-font-size: 2.5rem;
+    --h2-font-size: 1.5rem;
+    --h3-font-size: 1.25rem;
+    --normal-font-size: 1rem;
+    --small-font-size: .938rem;
+
+    /*Font weight*/
+    --font-regular: 400;
+    --font-semi-bold: 600;
+    --font-bold: 700;
+}
+
+/*responsive typography*/
+@media screen and (min-width: 1150px) {
+    :root {
+        --h1-font-size: 2.75rem;
+        --h3-font-size: 1.5rem;
+        --normal-font-size: 1rem;
+    }
+}
+
+/*base*/
+* { 
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+}
+
+body {
+    font-family: var(--body-font);
+    font-size: var(--normal-font-size);
+    background-color: var(--body-color);
+    color: var(--text-color);
+}
+
+h1, h2, h3, h4 {
+    font-family: var(--second-font);
+    color: var(--title-color);
+}
+
+a {
+    text-decoration: none;
+}
+
+img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+}
+
+/*Reuseable CSS classes*/
+.container {
+    max-width: 1120px;
+    margin-inline: 1.5rem;
+}
+
+/* ============================
+   TESTIMONIAL SECTION
+   ============================ */
+
+.testimonial {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    padding: 4rem 0;
+}
+
+.testimonial__swiper {
+    padding-bottom: 7rem;
+    width: 100%;
+    perspective: 1000px;
+}
+
+.testimonial__title {
+    font-size: var(--h1-font-size);
+    font-weight: 800;
+    text-align: center;
+    margin-bottom: 3rem;
+    color: var(--title-color);
+    letter-spacing: 0.5px;
+    line-height: 1.2;
+}
+
+/* 3D Card Styling */
+.testimonial__card {
+    width: 280px;
+    background-color: var(--container-color);
+    box-shadow: 
+        0 20px 40px rgba(0, 0, 0, 0.1),
+        0 10px 20px rgba(0, 0, 0, 0.08),
+        0 2px 8px rgba(0, 0, 0, 0.05);
+    padding: 2rem 1.5rem 2.5rem;
+    border-radius: 24px;
+    text-align: center;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    transform: translateZ(0);
+    height: 100%;
+}
+
+.testimonial__card::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: 24px;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(99, 102, 241, 0.1));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+}
+
+.testimonial__card:hover {
+    transform: translateY(-15px) translateZ(20px);
+    box-shadow: 
+        0 30px 60px rgba(0, 0, 0, 0.15),
+        0 15px 30px rgba(0, 0, 0, 0.12),
+        0 5px 15px rgba(0, 0, 0, 0.08);
+}
+
+.testimonial__card:hover::before {
+    opacity: 1;
+}
+
+/* Avatar with 3D Effect */
+.testimonial__img {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    border: 4px solid var(--first-color);
+    margin: 0 auto 1rem;
+    object-fit: cover;
+    background: linear-gradient(135deg, #8B5CF6, #6366F1);
+    box-shadow: 
+        0 8px 16px rgba(139, 92, 246, 0.3),
+        0 4px 8px rgba(139, 92, 246, 0.2),
+        inset 0 -2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.testimonial__card:hover .testimonial__img {
+    transform: scale(1.05);
+    box-shadow: 
+        0 12px 24px rgba(139, 92, 246, 0.4),
+        0 6px 12px rgba(139, 92, 246, 0.3),
+        inset 0 -2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.testimonial__name {
+    font-size: 1.2rem;
+    font-weight: var(--font-bold);
+    color: var(--title-color);
+    margin-bottom: 0.7rem;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.testimonial__rating {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    column-gap: 0.5rem;
+    margin-bottom: 0.8rem;
+}
+
+.testimonial__stars {
+    color: #FFA500;
+    font-size: 1rem;
+    letter-spacing: 2px;
+}
+
+.testimonial__score {
+    font-size: 1.1rem;
+    font-weight: var(--font-bold);
+    color: var(--title-color);
+}
+
+.testimonial__description {
+    color: var(--text-color);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin-bottom: 0.8rem;
+}
+
+.testimonial__date {
+    color: #999;
+    font-size: 0.85rem;
+}
+
+/* ============================
+   SWIPER CUSTOMIZATION
+   ============================ */
+
+/* Pagination Bullets */
+.testimonial .swiper-pagination-bullets {
+    bottom: 4rem;
+}
+
+.testimonial .swiper-pagination-bullet {
+    width: 10px;
+    height: 10px;
+    background-color: #D1D5DB;
+    opacity: 1;
+    transition: all 0.3s ease;
+}
+
+.testimonial .swiper-pagination-bullet-active {
+    background-color: var(--first-color);
+    width: 12px;
+    height: 12px;
+}
+
+/* Navigation Buttons */
+.testimonial .swiper-button-prev {
+    left: calc(50% - 5rem);
+}
+
+.testimonial .swiper-button-next {
+    right: calc(50% - 5rem);
+}
+
+.testimonial .swiper-button-prev::after,
+.testimonial .swiper-button-next::after {
+    content: '';
+}
+
+.testimonial :is(.swiper-button-prev, .swiper-button-next) {
+    top: auto !important;   /* allow bottom to work */
+    bottom: 1rem;           /* keep them visible & clickable */
+    z-index: 20 !important; /* ensure they are clickable */
+    width: 50px;
+    height: 50px;
+    background-color: var(--first-color);
+    color: var(--white-color);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 
+        0 8px 16px rgba(139, 92, 246, 0.3),
+        0 4px 8px rgba(139, 92, 246, 0.2);
+    transition: all 0.3s ease;
+}
+
+.testimonial :is(.swiper-button-prev, .swiper-button-next) i {
+    font-size: 1.5rem;
+}
+
+.testimonial :is(.swiper-button-prev, .swiper-button-next):hover {
+    background-color: hsl(266, 90%, 45%);
+    transform: scale(1.1) translateY(-2px);
+    box-shadow: 
+        0 12px 24px rgba(139, 92, 246, 0.4),
+        0 6px 12px rgba(139, 92, 246, 0.3);
+}
+
+/* ============================
+   RESPONSIVE
+   ============================ */
+
+/*For small device*/
+@media screen and (max-width: 768px) {
+    .testimonial__title {
+        font-size: 2rem;
+    }
+    
+    .testimonial__card {
+        width: 280px;
+    }
+    
+    .testimonial .swiper-button-prev,
+    .testimonial .swiper-button-next {
+        width: 40px;
+        height: 40px;
+    }
+}
+
+/*For medium device*/
+@media screen and (min-width: 768px) and (max-width: 1023px) {
+    .testimonial__card {
+        width: 300px;
+    }
+}
+
+/*For large devices*/
+@media screen and (min-width: 1024px) {
+    .testimonial__card {
+        width: 280px;
+        padding: 2rem 1.5rem 2.5rem;
+    }
+    
+    .testimonial__img {
+        width: 90px;
+        height: 90px;
+    }
+}

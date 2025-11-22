@@ -12,7 +12,7 @@ const UserControllers = require('./controllers/UserControllers');
 const CartControllers = require('./controllers/CartControllers');
 const OrderControllers = require('./controllers/OrderControllers');
 const ReviewController = require('./controllers/ReviewController');
-
+const ProductsController = require('./controllers/ProductsControllers');
 
 
 
@@ -31,8 +31,6 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 // Import products controller (MVC)
-const ProductsController = require('./controllers/ProductsControllers');
-
 const connection = mysql.createConnection({
     host: 'localhost',
     user: 'root',
@@ -61,12 +59,6 @@ app.use(bodyParser.urlencoded({
   extended: false
 }));
 
-// Make session user available to all views (so controllers can render without extra params)
-app.use((req, res, next) => {
-    res.locals.user = req.session ? req.session.user : null;
-    next();
-});
-
 //TO DO: Insert code for Session Middleware below 
 app.use(session({
     secret: 'secret',
@@ -76,7 +68,16 @@ app.use(session({
     cookie: { maxAge: 1000 * 60 * 60 * 24 * 7 } 
 }));
 
+
 app.use(flash());
+
+// Make session user available to all views (so controllers can render without extra params)
+app.use((req, res, next) => {
+    res.locals.user = req.session ? req.session.user : null;
+    next();
+});
+
+
 
 // Middleware to check if user is logged in
 const checkAuthenticated = (req, res, next) => {
@@ -194,20 +195,16 @@ app.get('/', (req, res) => {
     });
 });
 
-//About Us Route
-app.get('/aboutus', (req, res) => {
-    res.render('aboutus');
-});
+// About Us Page
+app.get('/aboutus', (req, res) => res.render('aboutus'));
 
 // Contact Us Page
-app.get('/contact', (req, res) => {
-    res.render('contact');
+app.get('/contact', (req, res) => res.render('contact'));
+
+// Review pages
+app.get('/reviews', checkAuthenticated, (req, res) => {
+    ReviewController.list(req, res);
 });
-
-
-
-// review pages
-app.get('/reviews', checkAuthenticated, ReviewController.list);
 app.post('/reviews/add', checkAuthenticated, ReviewController.addReview);
 
 // Inventory (admin) -> list products (controller handles rendering). protect with auth/admin.
@@ -254,7 +251,7 @@ app.post('/register', validateRegistration, (req, res) => {
 });
 
 
-
+//Login Route
 app.get('/login', (req, res) => {
     res.render('login', { messages: req.flash('success'), errors: req.flash('error') });
 });
@@ -294,7 +291,7 @@ app.post('/login', (req, res) => {
     });
 });
 
-
+//OTP
 app.post('/verifyOTP', (req, res) => {
     const { email, otp } = req.body;
     if (!email || !otp) {
@@ -337,8 +334,16 @@ app.post('/cart/clear', CartControllers.clear);
 //Order Routes
 app.get('/checkout', OrderControllers.showCheckout);
 app.post('/order/create', OrderControllers.createOrder);
-app.get('/order/invoice/:id', OrderControllers.viewInvoice);
-app.get('/orders/history', OrderControllers.getOrderHistory);
+
+//order Invoice Route
+app.get('/order/invoice/:id', (req, res) => {
+    OrderControllers.viewInvoice(req, res);
+});
+
+//Order History Route
+app.get('/orders/history', (req, res) => {
+    OrderControllers.getOrderHistory(req, res);
+});
 
 
 

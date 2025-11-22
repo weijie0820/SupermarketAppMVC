@@ -5,65 +5,122 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.6.0/remixicon.min.css">
+    <link rel="stylesheet" href="/css/index.css">
+    <link rel="stylesheet" href="/css/swiper-bundle.min.css">
+
     <title>Supermarket App</title>
   </head>
 
-      <body>
+  <body>
 
-        <%- include('partials/navbar') %>
+    <%- include('partials/navbar') %>
 
-          <div class="container mt-4">
-              <p class="text-center">
-                  <% if (user) { %>
+    <div class="container mt-4">
+      <p class="text-center">
+        <% if (user) { %>
+          <% if (user.role === "admin") { %>
+            <br>
+            Back to <a href="/inventory">inventory!</a>
+          <% } else { %>
+            <br>
+            Continue <a href="/shopping">Shopping!</a>
+          <% } %>
+        <% } else { %>
+          <br>
+          Welcome to supermarket app! <br>
+          Please <a href="/login">login</a> to continue...
+        <% } %>
+      </p>
+    </div>
 
-                      <% if (user.role === "admin") { %>
-                          <br>
-                          Back to <a href="/inventory">inventory!</a>
+    <section class="testimonial">
+      <h2 class="testimonial__title">WHAT <br> CUSTOMERS SAY</h2>
 
-                      <% } else { %>
-                          <br>
-                          Continue <a href="/shopping">Shopping!</a>
+      <div class="container">
+        <div class="testimonial__swiper swiper">  <!-- MUST contain button + pagination -->
 
+          <!-- SLIDES -->
+          <div class="swiper-wrapper">
+            <% reviews.forEach(review => { %>
+              <article class="testimonial__card swiper-slide">
+                  <img src="/images/default-avatar.png" class="testimonial__img">
+
+                  <h3 class="testimonial__name"><%= review.username %></h3>
+
+                  <div class="testimonial__rating">
+                    <span class="testimonial__stars">
+                      <% for (let i = 1; i <= 5; i++) { %>
+                        <%= i <= review.rating ? "★" : "☆" %>
                       <% } %>
+                    </span>
+                    <span class="testimonial__score"><%= review.rating.toFixed(1) %></span>
+                  </div>
 
-                  <% } else { %>
-                      <br>
-                      Welcome to supermarket app! <br>
-                      Please <a href="/login">login</a> to continue...
-                  <% } %>
-              </p>
+                  <p class="testimonial__description">"<%= review.comment %>"</p>
+                  <p class="testimonial__date"><%= new Date(review.created_at).toLocaleDateString() %></p>
+              </article>
+            <% }) %>
           </div>
 
-          <div class="container mt-5">
-            <h2 class="text-center mb-4">What Our Customers Say</h2>
+          <!-- Pagination + Arrows MUST be inside swiper -->
+          <div class="swiper-pagination"></div>
 
-            <div class="row justify-content-center">
-                <% reviews.forEach(review => { %>
-                    <div class="col-md-4 mb-3">
-                        <div class="card shadow-sm p-3">
+          <div class="swiper-button-prev"><i class="ri-arrow-left-line"></i></div>
+          <div class="swiper-button-next"><i class="ri-arrow-right-line"></i></div>
 
-                            <h5 class="fw-bold"><%= review.username %></h5>
+        </div>
+      </div>
+    </section>
 
-                            <!-- Star Rating -->
-                            <p class="text-warning mb-1">
-                                <% for (let i = 1; i <= 5; i++) { %>
-                                    <% if (i <= review.rating) { %>
-                                        ★
-                                    <% } else { %>
-                                        ☆
-                                    <% } %>
-                                <% } %>
-                            </p>
 
-                            <p>"<%= review.comment %>"</p>
+    <!-- FIX: Proper script tag -->
+    <script src="/swiper-bundle.min.js"></script>
 
-                            <small class="text-muted"><%= new Date(review.created_at).toLocaleDateString() %></small>
-                        </div>
-                    </div>
-                <% }) %>
-            </div>
-          </div>
-      </body>
+    
+    <script>
+      // FIX: Corrected property names (camelCase)
+      const swiperTestimonial = new Swiper('.testimonial__swiper', {
+        loop: true,
+        slidesPerView: 1,
+        centeredSlides: false,
+        spaceBetween: 30,
+        grabCursor: true,
+        speed: 600,
 
-<%- include('partials/footer') %>
+        pagination: {
+          el: '.swiper-pagination',
+          clickable: true,
+        },
+
+        navigation: {
+          nextEl: '.swiper-button-next',
+          prevEl: '.swiper-button-prev',
+        },
+
+        autoplay: {
+          delay: 3000,
+          disableOnInteraction: false,
+        },
+
+        // Show multiple slides on larger screens
+        breakpoints: {
+          640: {
+            slidesPerView: 1,
+            spaceBetween: 20
+          },
+          768: {
+            slidesPerView: 2,
+            spaceBetween: 25
+          },
+          1024: {
+            slidesPerView: 3,
+            spaceBetween: 30
+          }
+        }
+      });
+    </script>
+
+    <%- include('partials/footer') %>
+  </body>
 </html>
