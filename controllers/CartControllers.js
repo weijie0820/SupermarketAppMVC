@@ -49,6 +49,20 @@ const CartControllers = {
         });
     },
 
+    updateQtyTyped(req, res) {
+    const user = req.session.user;
+    if (!user) return res.redirect('/login');
+
+    const productId = req.params.id;
+    const newQty = parseInt(req.body.quantity);
+
+    Cart.updateQuantity(user.id, productId, newQty, (err) => {
+        if (err) return res.status(500).send("DB error");
+        res.redirect('/cart');
+    });
+},
+
+
     remove(req, res) {
         const user = req.session.user;
         if (!user) return res.redirect('/login');

@@ -1,0 +1,81 @@
+/* ========== HERO SECTION ========== */
+.about-hero {
+    background: linear-gradient(135deg, #e8f3ff, #ffffff);
+    padding: 100px 20px;
+    text-align: center;
+}
+
+.about-title {
+    font-size: 48px;
+    font-weight: 800;
+    color: #1a2b49;
+    animation: fadeInDown 1s ease;
+}
+
+.about-subtitle {
+    font-size: 20px;
+    color: #5c6f8c;
+    margin-top: 10px;
+    animation: fadeIn 1.4s ease;
+}
+
+/* ========== MAIN CONTENT ========== */
+.section-heading {
+    font-weight: 700;
+    font-size: 32px;
+    color: #1a2b49;
+}
+
+.about-text {
+    font-size: 18px;
+    line-height: 1.8;
+    color: #3d3d3d;
+}
+
+/* ========== FEATURE CARDS ========== */
+.feature-card {
+    border-radius: 14px;
+    overflow: hidden;
+    transition: 0.35s ease;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.1);
+}
+
+.feature-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 10px 26px rgba(0,0,0,0.18);
+}
+
+.feature-img {
+    width: 100%;
+    height: 240px;
+    object-fit: cover;
+}
+
+.card-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1a2b49;
+}
+
+.card-text {
+    font-size: 16px;
+    color: #555;
+}
+
+/* ========== ANIMATIONS ========== */
+@keyframes fadeInDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 768px) {
+    .about-title { font-size: 36px; }
+    .about-subtitle { font-size: 16px; }
+    .section-heading { font-size: 26px; }
+}

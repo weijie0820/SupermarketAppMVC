@@ -1,0 +1,54 @@
+/* ====== Supermarket Frosted Navbar ====== */
+
+.supermarket-navbar {
+    height: 70px;
+    background: rgba(255,255,255,0.7); /* frosted white */
+    backdrop-filter: blur(10px);       /* blur effect */
+    box-shadow: none !important;
+}
+
+/* Branding text */
+.supermarket-logo {
+    font-size: 1.3rem;
+    color: #1a3d7c !important;
+}
+
+/* Standard nav links */
+.supermarket-navbar .nav-link {
+    color: #333 !important;
+    font-weight: 500;
+}
+
+.supermarket-navbar .nav-link:hover {
+    color: #1a3d7c !important;
+}
+
+/* Buttons */
+.btn-success {
+    background-color: #2ecc71 !important;
+    border: none;
+}
+
+.btn-danger {
+    background-color: #e74c3c !important;
+    border: none;
+}
+
+.btn-outline-light {
+    border-color: #fff;
+    color: #fff !important;
+}
+
+/* Spacing */
+.navbar-nav .nav-item {
+    margin-left: 10px;
+}
+
+/* Mobile toggler adjustments */
+.navbar-toggler {
+    border: none;
+}
+.navbar-toggler:focus {
+    outline: none;
+    box-shadow: none;
+}

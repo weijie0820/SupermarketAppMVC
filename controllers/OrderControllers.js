@@ -76,6 +76,16 @@ exports.createOrder = (req, res) => {
                              VALUES (?, ?, ?, ?, NOW())`,
                             [orderId, item.product_id, item.quantity, item.price]
                         );
+
+                        
+                       // 🔥 Reduce product stock safely (never below zero)
+                            db.query(
+                                `UPDATE products 
+                                SET quantity = GREATEST(quantity - ?, 0)
+                                WHERE id = ?`,
+                                [item.quantity, item.product_id]
+                            );
+
                     });
 
                     db.query(

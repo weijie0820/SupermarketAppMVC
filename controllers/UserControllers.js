@@ -173,7 +173,7 @@ const UserControllers = {
     listUsers(req, res) {
         connection.query("SELECT id, username, email, role FROM users", (err, users) => {
             if (err) return res.status(500).send("Database error");
-            res.render("admin_users", { users, admin: req.session.user });
+            res.render("admin_users", { users, user: req.session.user });
         });
     },
 

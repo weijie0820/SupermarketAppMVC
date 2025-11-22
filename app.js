@@ -11,6 +11,7 @@ const nodemailer = require('nodemailer');
 const UserControllers = require('./controllers/UserControllers');
 const CartControllers = require('./controllers/CartControllers');
 const OrderControllers = require('./controllers/OrderControllers');
+const ReviewController = require('./controllers/ReviewController');
 
 
 
@@ -179,12 +180,35 @@ app.post('/reqOTP', async (req, res) => {
 
 
 // Define routes
-
+//Home Route
 app.get('/', (req, res) => {
-    // show index.ejs as the landing page
-    res.render('index', { user: req.session.user || null });
+    const user = req.session.user;
+
+    ReviewController.getReviews((err, reviews) => {
+        if (err) throw err;
+
+        res.render('index', {
+            user,
+            reviews
+        });
+    });
 });
 
+//About Us Route
+app.get('/aboutus', (req, res) => {
+    res.render('aboutus');
+});
+
+// Contact Us Page
+app.get('/contact', (req, res) => {
+    res.render('contact');
+});
+
+
+
+// review pages
+app.get('/reviews', checkAuthenticated, ReviewController.list);
+app.post('/reviews/add', checkAuthenticated, ReviewController.addReview);
 
 // Inventory (admin) -> list products (controller handles rendering). protect with auth/admin.
 app.get('/inventory', checkAuthenticated, checkAdmin, ProductsController.list);
@@ -306,6 +330,7 @@ app.get('/cart', CartControllers.viewCart);
 app.post('/add-to-cart/:id', CartControllers.addToCart);
 app.post('/cart/increase/:id', CartControllers.increaseQty);
 app.post('/cart/decrease/:id', CartControllers.decreaseQty);
+app.post('/cart/update/:id', CartControllers.updateQtyTyped);
 app.post('/cart/remove/:id', CartControllers.remove);
 app.post('/cart/clear', CartControllers.clear);
 

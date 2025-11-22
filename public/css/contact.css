@@ -1,0 +1,267 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@100..900&display=swap');
+:root{
+
+    --first-color:hsl(202, 100%, 50%);
+    --title-color:hsl(202, 100%, 50%);
+    --text-color:hsl(202, 100%, 50%);
+    --white-color:hsl(240, 33%, 98%);
+    --body-color:hsl(240, 16%, 95%);
+
+--body-font:"Montserrat", sans-serif;
+--h2-font-size:1.25rem;
+--normal-font-size:1rem;
+--small-font-size:.875rem;
+
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background-color: var(--body-color);
+  border: 2.5px solid var(--first-color);
+  outline: none;
+  padding: 1.2rem 2rem;
+  border-radius: 50px;
+  cursor: pointer;
+  overflow: hidden;
+  margin-right: 25px;
+  margin-bottom: 20px;
+}
+
+/* Inner label (covers icons initially) */
+.button__content {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: var(--first-color);
+  width: 100%;
+  height: 100%;
+  border-radius: 50px;
+  display: grid;
+  place-items:center;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+  transition: all 0.4s cubic-bezier(.2, .9, .2, 1.2);
+}
+
+.button__content span {
+  color: var(--white-color);
+  font: 600 var(--normal-font-size) var(--body-font);
+  letter-spacing: 0.5px;
+}
+
+/* Social and Contact sections hidden underneath */
+.button__social,
+.button__contact {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  column-gap: 0.8rem;
+  z-index: 1;
+}
+
+.button__social a,
+.button__contact a {
+  font-size: 1.6rem;
+  color: var(--first-color);
+  transform: translateY(2.2rem);
+  transition: transform 0.45s cubic-bezier(.2, .9, .2, 1.2);
+  opacity: 0;
+}
+
+.button__social a:nth-child(1),
+.button__contact a:nth-child(1) { transition-delay: .05s; }
+.button__social a:nth-child(2),
+.button__contact a:nth-child(2) { transition-delay: .1s; }
+.button__social a:nth-child(3),
+.button__contact a:nth-child(3) { transition-delay: .15s; }
+
+/* Hover animation */
+.button:hover .button__content {
+  top: 0;
+  transform: translate(-50%, -90%);
+  width: 55%;
+  height: 40%;
+}
+
+.button:hover .button__social a,
+.button:hover .button__contact a {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+/* Optional hover glow */
+.button__social a:hover,
+.button__contact a:hover {
+  color: white;
+  background-color: var(--first-color);
+  border-radius: 50%;
+  padding: 0.3rem;
+  box-shadow: 0 0 8px var(--first-color);
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 992px) {
+  .text-section {
+    padding: 40px 20px;
+    text-align: center;
+  }
+
+  .text-section h1 {
+    font-size: 2.2rem;
+  }
+
+  .text-section p {
+    font-size: 1rem;
+  }
+
+  .btn-outline-dark {
+    padding: 10px 25px;
+  }
+}
+
+/* ===== Social Media Buttons (Color-coded & Equal Size) ===== */
+.social-icons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: center;
+  justify-content: flex-start;
+  margin-top: 25px;
+}
+
+/* Shared base style */
+.social-btn {
+  width: 55px;
+  height: 55px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+.social-btn:hover {
+  transform: scale(1.12);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+/* Icon size */
+.social-icon {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+
+/* ===== Individual brand colors ===== */
+.facebook { background-color: #ffffff; }     /* Facebook blue */
+.instagram {
+  background: #fff;   /* keep white for contrast */
+}
+
+.x { background-color: #ffffff; }               /* Twitter X black */
+.whatsapp { background-color: #ffffff; }     /* WhatsApp green */
+.gmail { background-color: #ffffff; }        /* Gmail red */
+.telegram { background-color: #ffffff; }     /* Telegram blue */
+
+/* ===== Responsive layout ===== */
+@media (max-width: 992px) {
+  .social-icons {
+    justify-content: center;
+  }
+  .social-btn {
+    width: 50px;
+    height: 50px;
+  }
+  .social-icon {
+    width: 25px;
+    height: 25px;
+  }
+}
+
+
+/* ========== HERO SECTION ========== */
+.about-hero {
+    background: linear-gradient(135deg, #e8f3ff, #ffffff);
+    padding: 100px 20px;
+    text-align: center;
+}
+
+.about-title {
+    font-size: 48px;
+    font-weight: 800;
+    color: #1a2b49;
+    animation: fadeInDown 1s ease;
+}
+
+.about-subtitle {
+    font-size: 20px;
+    color: #5c6f8c;
+    margin-top: 10px;
+    animation: fadeIn 1.4s ease;
+}
+
+/* ========== MAIN CONTENT ========== */
+.section-heading {
+    font-weight: 700;
+    font-size: 32px;
+    color: #1a2b49;
+}
+
+.about-text {
+    font-size: 18px;
+    line-height: 1.8;
+    color: #3d3d3d;
+}
+
+/* ========== FEATURE CARDS ========== */
+.feature-card {
+    border-radius: 14px;
+    overflow: hidden;
+    transition: 0.35s ease;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.1);
+}
+
+.feature-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 10px 26px rgba(0,0,0,0.18);
+}
+
+.feature-img {
+    width: 100%;
+    height: 240px;
+    object-fit: cover;
+}
+
+.card-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1a2b49;
+}
+
+.card-text {
+    font-size: 16px;
+    color: #555;
+}
+
+@keyframes fadeInDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 768px) {
+    .about-title { font-size: 36px; }
+    .about-subtitle { font-size: 16px; }
+    .section-heading { font-size: 26px; }
+}
