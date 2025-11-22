@@ -10,6 +10,7 @@ const randomstring = require('randomstring');
 const nodemailer = require('nodemailer');
 const UserControllers = require('./controllers/UserControllers');
 const CartControllers = require('./controllers/CartControllers');
+const OrderControllers = require('./controllers/OrderControllers');
 
 
 
@@ -308,6 +309,11 @@ app.post('/cart/decrease/:id', CartControllers.decreaseQty);
 app.post('/cart/remove/:id', CartControllers.remove);
 app.post('/cart/clear', CartControllers.clear);
 
+//Order Routes
+app.get('/checkout', OrderControllers.showCheckout);
+app.post('/order/create', OrderControllers.createOrder);
+app.get('/order/invoice/:id', OrderControllers.viewInvoice);
+app.get('/orders/history', OrderControllers.getOrderHistory);
 
 
 

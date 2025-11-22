@@ -7,52 +7,37 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <title>Supermarket App</title>
 </head>
-<body>
-    <nav class="navbar navbar-expand-sm bg-dark navbar-dark">
-      <div class="container-fluid">
-        <a class="navbar-brand" href="/">Supermarket App</a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#collapsibleNavbar">
-          <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="collapsibleNavbar">
-          <ul class="navbar-nav">
-            <% if (!user) {%>
-                <li class="nav-item">
-                    <a class="nav-link" href="/register">Register</a>
-                </li> 
-                <li class="nav-item">
-                    <a class="nav-link" href="/login">Login</a>
-                </li> 
-                <li class="nav-item">
-                    <a class="nav-link" href="/shopping">Products</a>
-                </li> 
-            <% } else { %>
-                <li class="nav-item">
-                    <a class="nav-link" href="/logout">Logout</a>
-                </li> 
-            <% } %>
-          </ul>
-        </div>
-      </div>
-    </nav>
 
-    <div class="container">
-        <p style="text-align: center;">
-            <% if (user) {%>
-              <% if (user.role === "admin") { %>
-                <br>
-                Back to <a href="/inventory">inventory!</a>
-              <% } else { %>
-                <br>
-                Continue <a href="/shopping">Shopping!</a>
+<body>
+
+    <!-- Include extracted user navbar -->
+    <%- include('partials/usernav') %>
+
+    <div class="container mt-4">
+
+        <p class="text-center">
+
+            <% if (user) { %>
+
+                <% if (user.role === "admin") { %>
+                    <br>
+                    Back to <a href="/inventory">inventory!</a>
+
+                <% } else { %>
+                    <br>
+                    Continue <a href="/shopping">Shopping!</a>
+
                 <% } %>
+
             <% } else { %>
-            <br>
-            Welcome to supermarket app! <br>
-            Please <a href = "/login" >login</a> to continue...
+                <br>
+                Welcome to supermarket app! <br>
+                Please <a href="/login">login</a> to continue...
             <% } %>
+
         </p>
-        
+
     </div>
+
 </body>
 </html>
