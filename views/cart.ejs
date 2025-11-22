@@ -41,33 +41,42 @@
     </thead>
 
     <tbody>
-      <% let total = 0; %>
+        <% let total = 0; %>
+        <% for (let i = 0; i < cart.length; i++) { %>
+            <tr>
+                <td><%= cart[i].productName %></td>
 
-      <% cart.forEach(item => { %>
-        <tr>
-          <td><%= item.productName %></td>
-          <td><img src="/images/<%= item.image %>" width="80"></td>
+                <td><img src="/images/<%= cart[i].image %>" width="80"></td>
 
-          <td>
-            <!-- decrease -->
-            <form action="/cart/decrease/<%= item.id %>" method="POST" style="display:inline;">
-              <button class="btn btn-sm btn-outline-danger">-</button>
-            </form>
+                <td>
+                    <!-- Decrease Qty -->
+                    <form action="/cart/decrease/<%= cart[i].product_id %>" method="POST">
+                        <button class="btn btn-sm btn-outline-danger">-</button>
+                    </form>
 
-            <span class="px-2"><%= item.quantity %></span>
+                    <span class="px-2"><%= cart[i].quantity %></span>
 
-            <!-- increase -->
-            <form action="/cart/increase/<%= item.id %>" method="POST" style="display:inline;">
-              <button class="btn btn-sm btn-outline-success">+</button>
-            </form>
-          </td>
+                    <!-- Increase Qty -->
+                    <form action="/cart/increase/<%= cart[i].product_id %>" method="POST">
+                        <button class="btn btn-sm btn-outline-success">+</button>
+                    </form>
+                </td>
 
-          <td>$<%= (item.price * item.quantity).toFixed(2) %></td>
-        </tr>
+                <td>$<%= (cart[i].price * cart[i].quantity).toFixed(2) %></td>
 
-        <% total += item.price * item.quantity; %>
-      <% }); %>
-    </tbody>
+                <td>
+                    <!-- Remove -->
+                    <form action="/cart/remove/<%= cart[i].product_id %>" method="POST">
+                        <button class="btn btn-danger btn-sm">Remove</button>
+                    </form>
+                </td>
+            </tr>
+
+              <% total += cart[i].price * cart[i].quantity; %>
+          <% } %>
+      </tbody>
+
+
   </table>
 
       <h4>Total: $<%= total.toFixed(2) %></h4>

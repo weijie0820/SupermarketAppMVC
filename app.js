@@ -299,47 +299,17 @@ app.post('/verifyOTP', (req, res) => {
 // Shopping -> reuse controller to list products (controller will render)
 app.get('/shopping', ProductsController.list);
 
-//Cart route to increase and decrease product quantity //
+
+// --- CART (Database Version) ---
+app.get('/cart', CartControllers.viewCart);
+app.post('/add-to-cart/:id', CartControllers.addToCart);
 app.post('/cart/increase/:id', CartControllers.increaseQty);
-
 app.post('/cart/decrease/:id', CartControllers.decreaseQty);
+app.post('/cart/remove/:id', CartControllers.remove);
+app.post('/cart/clear', CartControllers.clear);
 
 
 
-// Add-to-cart, cart and logout still use session + connection for product lookup
-app.post('/add-to-cart/:id', checkAuthenticated, (req, res) => {
-    const productId = parseInt(req.params.id);
-    const quantity = parseInt(req.body.quantity) || 1;
-
-    connection.query('SELECT * FROM products WHERE id = ?', [productId], (error, results) => {
-        if (error) throw error;
-
-        if (results.length > 0) {
-            const product = results[0];
-
-            if (!req.session.cart) {
-                req.session.cart = [];
-            }
-
-            const existingItem = req.session.cart.find(item => item.productId === productId);
-            if (existingItem) {
-                existingItem.quantity += quantity;
-            } else {
-                req.session.cart.push({
-                    id: product.id,
-                    productName: product.productName,
-                    price: product.price,
-                    quantity: quantity,
-                    image: product.image
-                });
-            }
-
-            res.redirect('/cart');
-        } else {
-            res.status(404).send("Product not found");
-        }
-    });
-});
 
 
 // GET route for consent page
@@ -364,10 +334,8 @@ app.post('/consent', (req, res) => {
 });
 
 
-app.get('/cart', checkAuthenticated, (req, res) => {
-    const cart = req.session.cart || [];
-    res.render('cart', { cart, user: req.session.user });
-});
+
+
 
 app.get('/logout', (req, res) => {
     req.session.destroy();
@@ -378,6 +346,9 @@ app.get('/otp', (req, res) => {
   // Pass query strings to view so it can show messages / prefill
   res.render('otp', { query: req.query || {} });
 });
+
+
+
 
 
 // Product detail -> controller handles rendering

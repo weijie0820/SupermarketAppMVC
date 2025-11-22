@@ -53,40 +53,46 @@ const UserControllers = {
     },
 
     // ---------- Register User ----------
-    register(req, res) {
-        const { username, email, password, address, contact } = req.body;
-        const role = "user"; // default role
+   register(req, res) {
+    const { username, email, password, address, contact } = req.body;
+    const role = "user";  // Always default to user
 
-        // Check duplicate email
-        connection.query(
-            "SELECT * FROM users WHERE email = ?",
-            [email],
-            (err, results) => {
-                if (err) throw err;
+    // Check duplicate email
+    connection.query(
+        "SELECT * FROM users WHERE email = ?",
+        [email],
+        (err, results) => {
+            if (err) throw err;
 
-                if (results.length > 0) {
-                    req.flash("error", "Email already registered.");
-                    req.flash("formData", req.body);
-                    return res.redirect("/register");
-                }
+            if (results.length > 0) {
+                req.flash("error", "Email already registered.");
+                req.flash("formData", req.body);
+                return res.redirect("/register");
+            }
 
-                // Insert new user
-                const sql = `
-                    INSERT INTO users (username, email, password, address, contact, role, verified)
-                    VALUES (?, ?, SHA1(?), ?, ?, ?, 0)
-                `;
+            // Insert new user with default role
+            const sql = `
+                INSERT INTO users (username, email, password, address, contact, role, verified)
+                VALUES (?, ?, SHA1(?), ?, ?, ?, 0)
+            `;
 
-                connection.query(sql, [username, email, password, address, contact, role], async () => {
+            connection.query(sql,
+                [username, email, password, address, contact, role],
+                async (err2) => {
+                    if (err2) throw err2;
+
                     const otp = generateOTP();
                     setOTP(email, otp);
                     await sendOTP(email, otp);
 
                     req.flash("success", "Registration successful! Check your email for OTP.");
                     res.redirect(`/otp?email=${email}&sent=1`);
-                });
-            }
-        );
-    },
+                }
+            );
+        }
+    );
+},
+
 
 
     // ---------- Render Login Page ----------

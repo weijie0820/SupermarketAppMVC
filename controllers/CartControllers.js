@@ -1,106 +1,74 @@
-const connection = require('../db');
 const Cart = require('../models/Cart');
 
 const CartControllers = {
 
-    // ===========================
-    // Display cart page
-    // ===========================
     viewCart(req, res) {
-        const cart = req.session.cart || [];
-        res.render("cart", { cart, user: req.session.user });
-    },
+        const user = req.session.user;
+        if (!user) return res.redirect('/login');
 
-    // ===========================
-    // Add product to cart
-    // ===========================
-    addToCart(req, res) {
-        const productId = req.params.id;
-        const quantity = parseInt(req.body.quantity) || 1;
-
-        connection.query("SELECT * FROM products WHERE id = ?", [productId], (err, results) => {
-            if (err) throw err;
-            if (results.length === 0) return res.status(404).send("Product not found");
-
-            const product = results[0];
-
-            if (!req.session.cart) req.session.cart = [];
-
-            const existing = req.session.cart.find(i => i.id === product.id);
-
-            if (existing) {
-                existing.quantity += quantity;
-            } else {
-                req.session.cart.push({
-                    id: product.id,
-                    productName: product.productName,
-                    price: product.price,
-                    quantity: quantity,
-                    image: product.image
-                });
-            }
-
-            res.redirect("/cart");
+        Cart.getUserCart(user.id, (err, items) => {
+            if (err) return res.status(500).send("DB error");
+            res.render("cart", { cart: items, user });
         });
     },
 
-    // ===========================
-    // Remove item from cart
-    // ===========================
-    removeFromCart(req, res) {
-        const productId = parseInt(req.params.id);
+    addToCart(req, res) {
+        const user = req.session.user;
+        if (!user) return res.redirect('/login');
 
-        req.session.cart = (req.session.cart || []).filter(
-            item => item.id !== productId
-        );
+        const productId = req.params.id;
+        const qty = parseInt(req.body.quantity || 1);
 
-        res.redirect('/cart');
+        Cart.addItem(user.id, productId, qty, (err) => {
+            if (err) return res.status(500).send("DB error");
+            res.redirect('/cart');
+        });
     },
 
-    // ===========================
-    // Clear entire cart
-    // ===========================
-    clearCart(req, res) {
-        req.session.cart = [];
-        res.redirect('/cart');
-    },
-
-    // ===========================
-    // Increase Quantity
-    // ===========================
     increaseQty(req, res) {
-        const productId = parseInt(req.params.id);
+        const user = req.session.user;
+        if (!user) return res.redirect('/login');
 
-        if (!req.session.cart) req.session.cart = [];
+        const productId = req.params.id;
 
-        const item = req.session.cart.find(i => i.id === productId);
-        if (item) {
-            item.quantity += 1;
-        }
-
-        res.redirect('/cart');
+        Cart.increase(user.id, productId, (err) => {
+            if (err) return res.status(500).send("DB error");
+            res.redirect('/cart');
+        });
     },
 
-    // ===========================
-    // Decrease Quantity
-    // ===========================
     decreaseQty(req, res) {
-        const productId = parseInt(req.params.id);
+        const user = req.session.user;
+        if (!user) return res.redirect('/login');
 
-        if (!req.session.cart) req.session.cart = [];
+        const productId = req.params.id;
 
-        const item = req.session.cart.find(i => i.id === productId);
+        Cart.decrease(user.id, productId, (err) => {
+            if (err) return res.status(500).send("DB error");
+            res.redirect('/cart');
+        });
+    },
 
-        if (item) {
-            item.quantity -= 1;
+    remove(req, res) {
+        const user = req.session.user;
+        if (!user) return res.redirect('/login');
 
-            // If reduced to 0 → remove item completely
-            if (item.quantity <= 0) {
-                req.session.cart = req.session.cart.filter(i => i.id !== productId);
-            }
-        }
+        const productId = req.params.id;
 
-        res.redirect('/cart');
+        Cart.remove(user.id, productId, (err) => {
+            if (err) return res.status(500).send("DB error");
+            res.redirect('/cart');
+        });
+    },
+
+    clear(req, res) {
+        const user = req.session.user;
+        if (!user) return res.redirect('/login');
+
+        Cart.clear(user.id, (err) => {
+            if (err) return res.status(500).send("DB error");
+            res.redirect('/cart');
+        });
     }
 };
 
