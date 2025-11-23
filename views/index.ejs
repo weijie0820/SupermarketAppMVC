@@ -16,56 +16,128 @@
 
     <%- include('partials/navbar') %>
 
-    <div class="container mt-4">
-      <p class="text-center">
-        <% if (user) { %>
-          <% if (user.role === "admin") { %>
-            <br>
-            Back to <a href="/inventory">inventory!</a>
-          <% } else { %>
-            <br>
-            Continue <a href="/shopping">Shopping!</a>
-          <% } %>
-        <% } else { %>
-          <br>
-          Welcome to supermarket app! <br>
-          Please <a href="/login">login</a> to continue...
-        <% } %>
-      </p>
-    </div>
+
+
 
           <!--Hero video carousel-->
           <section class="hero-carousel swiper">
-            
             <div class="swiper-wrapper">
 
-              <!-- Slide 1 -->
+              <!-- Slide 1 – Welcome -->
               <div class="swiper-slide">
-                <video class="hero-video" src="/video/index1.mp4" autoplay muted loop playsinline></video>
+                  <video class="hero-video"
+                    src="/video/index1.mp4"
+                    autoplay muted loop playsinline
+                    disablePictureInPicture
+                    controlsList="nodownload noplaybackrate nofullscreen noremoteplayback">
+                  </video>
+
+                  <div class="hero-overlay">
+
+                    <% if (user) { %>
+                        <% if (user.role === "admin") { %>
+                            <!-- ADMIN MESSAGE -->
+                            <h1>Welcome back, Admin!</h1>
+                            <p>Proceed to <a href="/inventory">Inventory Management</a></p>
+
+                        <% } else { %>
+                            <!-- NORMAL LOGGED-IN USER -->
+                            <h1>Welcome back!</h1>
+                            <p>Continue <a href="/shopping">Shopping</a></p>
+
+                        <% } %>
+
+                    <% } else { %>
+                        <!-- GUEST USER -->
+                        <h1>Welcome to Supermarket App</h1>
+                        <p>Please <a href="/login">login</a> to continue…</p>
+
+                    <% } %>
+
+                  </div>
+                </div>
+
+
+
+              <!-- Slide 2 – Secure Payment -->
+             <div class="swiper-slide">
+                <video class="hero-video"
+                  src="/video/index2.mp4"
+                  autoplay muted loop playsinline
+                  disablePictureInPicture
+                  controlsList="nodownload noplaybackrate nofullscreen noremoteplayback">
+                </video>
+
+                <div class="hero-overlay">
+                  <h1>Secure & Fast Payment</h1>
+                  <p>Your checkout is protected with encrypted processing.</p>
+                </div>
               </div>
 
-              <!-- Slide 2 (Optional) -->
+
+              <!-- Slide 3 – Fast Delivery -->
               <div class="swiper-slide">
-                <video class="hero-video" src="/video/index2.mp4" autoplay muted loop playsinline></video>
+                  <video class="hero-video"
+                    src="/video/index3.mp4"
+                    autoplay muted loop playsinline
+                    disablePictureInPicture
+                    controlsList="nodownload noplaybackrate nofullscreen noremoteplayback">
+                  </video>
+
+                  <div class="hero-overlay">
+                    <h1>Fast Delivery</h1>
+                    <p>Sit back and relax — your products are on the way!</p>
+                  </div>
+                </div>
+
               </div>
 
-              <!-- Slide 3 (Optional) -->
-              <div class="swiper-slide">
-                <video class="hero-video" src="/video/index3.mp4" autoplay muted loop playsinline></video>
-              </div>
-
-            </div>
-
-            <!-- Pagination dots -->
+            <!-- Pagination -->
             <div class="swiper-pagination"></div>
 
-            <!-- Navigation arrows -->
+            <!-- Navigation -->
             <div class="swiper-button-prev"></div>
             <div class="swiper-button-next"></div>
+            
+          </section>
 
+                  <!-- WHO WE ARE -->
+          <section class="about-section">
+              <div class="row-container reverse">
+                <div class="col-left">
+                  <img src="/UI/who.jpg" class="about-image" alt="">
+                </div>
+
+                <div class="col-right">
+                  <h2 class="section-title">Who We Are</h2>
+                  <p class="section-text">
+                    Supermarket App brings convenience to your fingertips — fast delivery,
+                    secure payments, and fresh products every day.
+                  </p>
+                  <a href="/aboutus" class="pastel-btn">Explore More</a>
+                </div>
+              </div>
           </section>
 
 
+
+          <!-- WHY CHOOSE SUPERMARKET APP -->
+          <section class="about-section">
+            <div class="row-container ">
+              <div class="col-left">
+                <img src="/UI/why.jpg" class="about-image" alt="">
+              </div>
+
+              <div class="col-right">
+                <h2 class="section-title">Why Choose Supermarket App?</h2>
+                <p class="section-text">
+                  We make grocery shopping simple with real-time stock, secure checkout,
+                  and reliable delivery.
+                </p>
+                <a href="/products" class="pastel-btn">Start Shopping</a>
+              </div>
+            </div>
+          </section>
 
 
 

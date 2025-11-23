@@ -1,0 +1,107 @@
+/* Page Background */
+body {
+    background: linear-gradient(to bottom, #fff7e1, #f8e8c0);
+    font-family: "Poppins", sans-serif;
+}
+
+/* Page Title */
+.container h2 {
+    font-weight: 700;
+    color: #4b2e05;
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+/* Review Form Card */
+.card {
+    border: none;
+    border-radius: 14px;
+    background: #ffffff;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+}
+
+.card h5 {
+    font-weight: 600;
+    color: #4b2e05;
+}
+
+/* Form Inputs */
+.form-label {
+    font-weight: 600;
+    color: #4b2e05;
+}
+
+.form-control,
+.form-select {
+    border-radius: 10px;
+    border: 1px solid #d7c6a3;
+    padding: 10px;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: #f4c33d;
+    box-shadow: 0 0 7px rgba(244, 195, 61, .6);
+}
+
+/* Submit Button */
+.btn-success {
+    background: #f4c33d;
+    color: #4b2e05;
+    padding: 10px 20px;
+    border: none;
+    font-weight: 600;
+    border-radius: 10px;
+    transition: 0.3s ease;
+}
+
+.btn-success:hover {
+    background: #e0ad29;
+    color: white;
+}
+
+/* Review List Title */
+.container h4 {
+    font-weight: 700;
+    color: #4b2e05;
+    margin-top: 40px;
+}
+
+/* Individual Review Card */
+.shadow-sm {
+    border-radius: 14px;
+    background: white;
+    padding: 20px 25px;
+    transition: 0.25s ease;
+}
+
+.shadow-sm:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 24px rgba(0,0,0,0.15);
+}
+
+/* Username */
+.shadow-sm h5 {
+    font-weight: 700;
+    color: #4b2e05;
+}
+
+/* Stars */
+.text-warning {
+    font-size: 22px;
+    letter-spacing: 2px;
+    color: #fdbc3d !important;
+}
+
+/* Comment */
+.shadow-sm p {
+    font-size: 16px;
+    margin-bottom: 5px;
+    color: #4b3920;
+    line-height: 1.5;
+}
+
+/* Date */
+.text-muted {
+    font-size: 14px;
+}
