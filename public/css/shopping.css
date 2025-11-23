@@ -1,0 +1,184 @@
+/* ===========================
+   GLOBAL THEME VARIABLES
+   =========================== */
+:root {
+    --yellow: #f4c33d;
+    --yellow-dark: #e0ad29;
+    --brown: #4b2e05;
+    --text-dark: #5c4b31;
+    --bg-light: #fff7e1;
+    --bg: #ffffff;
+    --transition: 0.3s ease;
+    --font-main: "Bona Nova", serif;
+}
+
+/* ===========================
+   BASE STYLES
+   =========================== */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font-main);
+    background: linear-gradient(to bottom, var(--bg-light), #f9e9c7);
+    color: var(--text-dark);
+}
+
+/* Links */
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+img {
+    max-width: 100%;
+    display: block;
+}
+
+/* ===========================
+   SIDEBAR FILTER
+   =========================== */
+
+.filter-sidebar {
+    width: 100%;
+    max-width: 260px;
+    padding: 20px;
+    background: var(--bg);
+    border-radius: 12px;
+    border: 1px solid #eee;
+}
+
+.filter-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+}
+
+.filter-header h5 {
+    font-weight: 700;
+    color: var(--brown);
+}
+
+.filter-content {
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: all 0.35s ease;
+}
+
+.filter-content.open {
+    max-height: 500px;
+    opacity: 1;
+}
+
+.filter-option {
+    padding: 8px 0;
+    display: block;
+    font-weight: 500;
+    color: var(--text-dark);
+    transition: 0.2s ease;
+}
+
+.filter-option:hover {
+    color: var(--yellow-dark);
+    font-weight: 700;
+}
+
+/* ===========================
+   PRODUCT CARD (HOVER STYLE)
+   =========================== */
+
+.product-card-hover {
+    position: relative;
+    overflow: hidden;
+    background: var(--bg);
+    border-radius: 20px;
+    border: 1px solid #eee;
+    transition: var(--transition);
+}
+
+.product-card-hover:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 18px 35px rgba(0, 0, 0, 0.18);
+}
+
+/* Image container */
+.hover-img-container {
+    height: 250px;
+    overflow: hidden;
+    border-radius: 20px;
+}
+
+.hover-product-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: 0.4s ease;
+}
+
+.product-card-hover:hover .hover-product-img {
+    transform: scale(1.15);
+}
+
+/* Overlay bottom reveal */
+.hover-overlay {
+    position: absolute;
+    bottom: -150px;
+    width: 100%;
+    padding: 18px;
+    text-align: center;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    opacity: 0;
+    transition: 0.5s ease;
+}
+
+.product-card-hover:hover .hover-overlay {
+    bottom: 0;
+    opacity: 1;
+}
+
+.hover-overlay h4 {
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.hover-price {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 14px;
+}
+
+/* Buttons inside overlay */
+.hover-btn {
+    background: var(--yellow);
+    color: var(--brown);
+    padding: 8px 22px;
+    border-radius: 8px;
+    font-weight: bold;
+    border: none;
+    transition: var(--transition);
+}
+
+.hover-btn:hover {
+    background: var(--yellow-dark);
+    color: #fff;
+}
+
+.hover-btn-outline {
+    border: 2px solid var(--yellow);
+    color: var(--yellow);
+    padding: 8px 22px;
+    border-radius: 8px;
+    transition: var(--transition);
+}
+
+.hover-btn-outline:hover {
+    background: var(--yellow);
+    color: var(--brown);
+}

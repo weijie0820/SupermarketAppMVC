@@ -318,8 +318,65 @@ app.post('/verifyOTP', (req, res) => {
     }
 });
 
+app.get('/otp', (req, res) => {
+  // Pass query strings to view so it can show messages / prefill
+  res.render('otp', { query: req.query || {} });
+});
+
+/** Search bar**/
+app.get("/search", (req, res) => {
+    const { q, price, category } = req.query;
+
+    let sql = "SELECT * FROM products WHERE productName LIKE ?";
+    let params = [`%${q}%`];
+
+    if (price) {
+        const [min, max] = price.split("-");
+        sql += " AND price BETWEEN ? AND ?";
+        params.push(min, max);
+    }
+
+    if (category) {
+        sql += " AND category = ?";
+        params.push(category);
+    }
+
+    connection.query(sql, params, (err, results) => {
+        if (err) throw err;
+
+        res.render("search_results", {
+            products: results,
+            query: q
+        });
+    });
+});
+
 // Shopping -> reuse controller to list products (controller will render)
-app.get('/shopping', ProductsController.list);
+app.get("/shopping", (req, res) => {
+    const { price, category } = req.query;
+
+    let sql = "SELECT * FROM products WHERE 1=1";
+    let params = [];
+
+    // price filter
+    if (price) {
+        const [min, max] = price.split("-");
+        sql += " AND price BETWEEN ? AND ?";
+        params.push(min, max);
+    }
+
+    // category filter
+    if (category) {
+        sql += " AND category = ?";
+        params.push(category);
+    }
+
+    connection.query(sql, params, (err, products) => {
+        if (err) throw err;
+        res.render("shopping", { products, user: req.session.user });
+    });
+});
+
 
 
 // --- CART (Database Version) ---
@@ -330,10 +387,13 @@ app.post('/cart/decrease/:id', CartControllers.decreaseQty);
 app.post('/cart/update/:id', CartControllers.updateQtyTyped);
 app.post('/cart/remove/:id', CartControllers.remove);
 app.post('/cart/clear', CartControllers.clear);
+app.post('/cart/update-multiple', CartControllers.updateMultiple);
 
 //Order Routes
 app.get('/checkout', OrderControllers.showCheckout);
 app.post('/order/create', OrderControllers.createOrder);
+app.post('/checkout', OrderControllers.showCheckout);
+
 
 //order Invoice Route
 app.get('/order/invoice/:id', (req, res) => {
@@ -372,19 +432,11 @@ app.post('/consent', (req, res) => {
 
 
 
-
+/*Log out*/
 app.get('/logout', (req, res) => {
     req.session.destroy();
     res.redirect('/');
 });
-
-app.get('/otp', (req, res) => {
-  // Pass query strings to view so it can show messages / prefill
-  res.render('otp', { query: req.query || {} });
-});
-
-
-
 
 
 // Product detail -> controller handles rendering

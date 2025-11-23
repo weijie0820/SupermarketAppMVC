@@ -52,3 +52,30 @@
     outline: none;
     box-shadow: none;
 }
+
+/* Search bar style */
+.navbar-search {
+    width: 350px;
+}
+
+.search-input {
+    border-radius: 25px !important;
+    padding-left: 15px;
+    border: 1.5px solid #c9a341;
+}
+
+.search-btn {
+    background: #f4c33d;
+    color: #4b2e05;
+    border-radius: 50%;
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.search-btn:hover {
+    background: #e0ad29;
+    color: #fff;
+}

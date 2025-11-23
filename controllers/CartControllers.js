@@ -62,6 +62,26 @@ const CartControllers = {
     });
 },
 
+updateMultiple(req, res) {
+    const user = req.session.user;
+    if (!user) return res.redirect('/login');
+
+    const quantities = req.body.quantities;   // e.g. { "3": "2", "5": "4" }
+
+    const tasks = Object.entries(quantities).map(([productId, qty]) => {
+        return new Promise((resolve, reject) => {
+            Cart.updateQuantity(user.id, productId, parseInt(qty), (err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+    });
+
+    Promise.all(tasks)
+        .then(() => res.redirect('/cart'))
+        .catch(() => res.status(500).send("DB error"));
+},
+
 
     remove(req, res) {
         const user = req.session.user;

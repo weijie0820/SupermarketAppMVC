@@ -46,19 +46,26 @@ body {
 
 /* Submit Button */
 .btn-success {
-    background: #f4c33d;
-    color: #4b2e05;
-    padding: 10px 20px;
-    border: none;
-    font-weight: 600;
-    border-radius: 10px;
-    transition: 0.3s ease;
+  background: #f4c33d;
+  color: #4b2e05;
 }
 
 .btn-success:hover {
-    background: #e0ad29;
-    color: white;
+  background: #e0ad29;
+  color: #fff;
 }
+
+.text-warning {
+  color: #f4c33d !important;
+}
+
+.card,
+.shadow-sm {
+  border-radius: 14px;
+  background: white;
+  transition: 0.25s ease;
+}
+
 
 /* Review List Title */
 .container h4 {

@@ -1,110 +1,115 @@
-/* Background Theme */
+/* ===========================
+   GLOBAL THEME
+   =========================== */
+:root {
+    --yellow: #f4c33d;
+    --yellow-dark: #e0ad29;
+    --brown: #4b2e05;
+    --bg-light: #fff7e1;
+    --bg-mid: #f9e9c7;
+    --text: #5c4b31;
+}
+
+/* PAGE BACKGROUND */
 body {
-    background: linear-gradient(to bottom, #fff7e1, #f9e9c7);
+    background: linear-gradient(to bottom, var(--bg-light), var(--bg-mid));
     font-family: "Poppins", sans-serif;
 }
 
-/* Page Title */
+/* TITLE */
 .container h2 {
     font-weight: 700;
-    color: #4b2e05;
+    color: var(--brown);
     margin-bottom: 25px;
     text-align: center;
 }
 
-/* Table Styling */
-.table {
-    background: white;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+/* EMPTY CART TEXT */
+.empty-text {
+    text-align: center;
+    color: var(--brown);
+    font-size: 18px;
+    padding: 20px 0;
 }
 
-.table th {
-    background: #f4c33d;
-    color: #4b2e05;
+/* TABLE */
+.cart-table {
+    background: #ffffff;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+}
+
+.cart-table th {
+    background: var(--yellow);
+    color: var(--brown);
     font-weight: 700;
     padding: 14px;
     text-transform: uppercase;
-    font-size: 14px;
 }
 
-.table td {
-    vertical-align: middle;
+.cart-table td {
     padding: 16px;
+    vertical-align: middle;
 }
 
-/* Product Image */
-.table img {
+/* PRODUCT IMAGE */
+.cart-img {
+    width: 60px;
     border-radius: 8px;
     box-shadow: 0 3px 10px rgba(0,0,0,0.2);
 }
 
-/* Quantity Box */
-input[type="number"] {
-    border: 1px solid #e3d3b4;
+/* QUANTITY INPUT */
+.qty-input {
+    width: 70px;
     border-radius: 8px;
-    padding: 6px;
+    border: 1px solid #e0d3b4;
 }
 
-input[type="number"]:focus {
-    border-color: #f4c33d;
+.qty-input:focus {
+    border-color: var(--yellow);
     box-shadow: 0 0 8px rgba(244,195,61,0.5);
 }
 
-/* Buttons */
-.btn-outline-danger,
-.btn-outline-success,
-.btn-primary {
+/* REMOVE BTN */
+.remove-btn {
     border-radius: 8px;
-    font-weight: 600;
 }
 
-/* Remove Button */
-.btn-danger {
-    border-radius: 8px;
-    font-weight: 600;
-}
-
-/* Clear Cart Button */
-.btn-secondary {
-    border-radius: 8px;
+/* CLEAR CART BUTTON */
+.clear-btn {
     padding: 10px 18px;
-}
-
-/* Checkout Button */
-.btn-success {
-    background: #f4c33d;
-    border: none;
-    color: #4b2e05;
-    font-weight: 700;
     border-radius: 10px;
+}
+
+/* CHECKOUT BUTTON */
+.checkout-btn {
+    background: var(--yellow);
+    border: none;
+    color: var(--brown);
+    font-weight: 700;
     padding: 10px 28px;
+    border-radius: 10px;
     transition: 0.25s ease;
 }
 
-.btn-success:hover {
-    background: #e0ad29;
-    color: white;
+.checkout-btn:hover {
+    background: var(--yellow-dark);
+    color: #fff;
 }
 
-/* Row Hover Animation */
-.table tbody tr {
-    transition: 0.25s ease;
-}
-
-.table tbody tr:hover {
-    background: #fff5d6;
-}
-
-/* Cart Total */
-.fw-bold {
+/* TOTAL TEXT */
+.total-text {
     font-size: 24px;
-    color: #4b2e05;
+    color: var(--brown);
 }
 
-/* Select All Checkbox */
-#selectAll {
-    width: 20px;
-    height: 20px;
+/* HOVER EFFECT ROWS */
+.cart-table tbody tr {
+    transition: 0.25s ease;
+}
+
+.cart-table tbody tr:hover {
+    background: #fff5d6;
 }

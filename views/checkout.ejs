@@ -38,11 +38,14 @@
                 <h3>Total Amount: $<%= totalAmount.toFixed(2) %></h3>
 
                     <form action="/order/create" method="POST">
-                    <button class="btn btn-success mt-3 px-4 py-2">Confirm Order</button>
+                        <input type="hidden" name="selectedProducts" value="<%= JSON.stringify(cart.map(i => i.product_id)) %>">
+
+                        <button class="btn btn-success mt-3 px-4 py-2">Confirm Order</button>
                     </form>
 
-                    <a href="/cart" class="btn btn-secondary mt-3">Back to Cart</a>
-            </div>        
+                <a href="/cart" class="btn btn-secondary mt-3">Back to Cart</a>
 
+            </div>        
+    <%- include('partials/footer') %>
         </body>
 </html>

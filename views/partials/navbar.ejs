@@ -19,6 +19,22 @@
     </button>
 
     <div class="collapse navbar-collapse" id="mainNav">
+
+      <!--Center Search bar-->
+      <form action="/search" method="GET" class="d-flex mx-auto navbar-search">
+          <input 
+              class="form-control search-input" 
+              type="search" 
+              name="q" 
+              placeholder="Search products..."
+              required
+          >
+          <button class="btn search-btn ms-2" type="submit">
+              <i class="ri-search-line"></i>
+          </button>
+      </form>
+
+
       <ul class="navbar-nav ms-auto">
 
         <% if (!user) { %>

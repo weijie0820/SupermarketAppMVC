@@ -6,33 +6,30 @@ const db = require('../db');
 // ===========================
 exports.showCheckout = (req, res) => {
     const userId = req.session.user?.id;
+    if (!userId) return res.redirect("/login");
 
-    if (!userId) {
-        req.flash("error", "Access denied");
-        return res.redirect('/login');
+    let selected = JSON.parse(req.body.selectedProducts || "[]");
+
+    if (selected.length === 0) {
+        return res.redirect("/cart");
     }
 
-    db.query(
-        `SELECT c.product_id, c.quantity, p.productName, p.price, p.image
-         FROM cart_itemsss c
-         JOIN products p ON c.product_id = p.id
-         WHERE c.user_id = ?`,
-        [userId],
-        (err, results) => {
-            if (err) throw err;
+    const placeholders = selected.map(() => "?").join(",");
 
-            let totalAmount = 0;
-            results.forEach(item => {
-                totalAmount += item.price * item.quantity;
-            });
+    const query = `
+        SELECT c.product_id, c.quantity, p.productName, p.price, p.image
+        FROM cart_itemsss c
+        JOIN products p ON c.product_id = p.id
+        WHERE c.user_id = ? AND c.product_id IN (${placeholders})
+    `;
 
-            res.render('checkout', {
-                cart: results,
-                totalAmount
-            });
-        }
-    );
+    db.query(query, [userId, ...selected], (err, items) => {
+        const totalAmount = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+        res.render("checkout", { cart: items, totalAmount });
+    });
 };
+
+
 
 
 
@@ -44,12 +41,24 @@ exports.createOrder = (req, res) => {
 
     if (!userId) return res.redirect('/login');
 
-    db.query(
-        `SELECT c.product_id, c.quantity, p.price
-         FROM cart_itemsss c
-         JOIN products p ON c.product_id = p.id
-         WHERE c.user_id = ?`,
-        [userId],
+    let selectedIds = [];
+try {
+    selectedIds = JSON.parse(req.body.selectedProducts);
+} catch {
+    selectedIds = [];
+}
+
+if (selectedIds.length === 0) return res.redirect("/cart");
+
+const placeholders = selectedIds.map(() => "?").join(",");
+
+db.query(
+    `SELECT c.product_id, c.quantity, p.price
+     FROM cart_itemsss c
+     JOIN products p ON c.product_id = p.id
+     WHERE c.user_id = ? AND c.product_id IN (${placeholders})`,
+    [userId, ...selectedIds],
+
         (err, cartItems) => {
             if (err) throw err;
 
@@ -57,6 +66,16 @@ exports.createOrder = (req, res) => {
             cartItems.forEach(item => {
                 totalAmount += item.price * item.quantity;
             });
+
+            let selectedIds = [];
+
+                try {
+                    selectedIds = JSON.parse(req.body.selectedProducts);
+                } catch {
+                    selectedIds = [];
+                }
+
+                if (selectedIds.length === 0) return res.redirect("/cart");
 
             const invoiceNumber = "INV-" + randomstring.generate({ length: 6, charset: 'alphanumeric' });
 
@@ -88,10 +107,11 @@ exports.createOrder = (req, res) => {
 
                     });
 
-                    db.query(
-                        `DELETE FROM cart_itemsss WHERE user_id = ?`,
-                        [userId]
+                   db.query(
+                        `DELETE FROM cart_itemsss WHERE user_id = ? AND product_id IN (${placeholders})`,
+                        [userId, ...selectedIds]
                     );
+
 
                     res.redirect(`/order/invoice/${orderId}`);
                 }

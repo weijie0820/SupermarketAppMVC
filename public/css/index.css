@@ -613,4 +613,87 @@ video::-internal-media-controls-overflow-button {
   line-height: 1.7;
 }
 
-/* Button styling stays same */
+/* Guest login button */
+.login-btn {
+  display: inline-block;
+  padding: 8px 20px;
+  border: 2px solid #fff;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 8px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: 0.3s ease;
+}
+
+.login-btn:hover {
+  background: #fff;
+  color: #000;
+  transform: translateY(-2px);
+}
+
+/* Text styling (optional) */
+.guest-text {
+  font-size: 1.2rem;
+  margin-top: 10px;
+}
+
+body {
+  background: linear-gradient(to bottom, #FFF8E7, #FFEFC1);
+  font-family: "Poppins", sans-serif;
+}
+
+/* Guest login button */
+.login-btn {
+  display: inline-block;
+  padding: 8px 20px;
+  border: 2px solid #fff;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 8px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: 0.3s ease;
+}
+
+.login-btn:hover {
+  background: #fff;
+  color: #000;
+  transform: translateY(-2px);
+}
+
+.guest-text {
+  font-size: 1.2rem;
+  margin-top: 10px;
+}
+
+/* Section Title */
+.section-title {
+  font-size: 48px;
+  font-weight: 800;
+  color: #4b2e05;
+  margin-bottom: 20px;
+}
+
+/* Section Text */
+.section-text {
+  font-size: 20px;
+  color: #5c4b31;
+  margin-bottom: 25px;
+  line-height: 1.7;
+}
+
+/* Buttons */
+.pastel-btn {
+  background: #f4c33d;
+  color: #4b2e05;
+  padding: 12px 28px;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: 0.3s ease;
+}
+
+.pastel-btn:hover {
+  background: #e0ad29;
+  color: #fff;
+}

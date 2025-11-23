@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Search Results</title>
+        <link rel="stylesheet" href="/css/shopping.css">
+        <link rel="stylesheet" href="/css/search.css">
+        <link rel="stylesheet" href="/css/layout.css">
+    </head>
+        <body>
+
+        <%- include('partials/navbar') %>
+        <main class="page-wrapper">
+            <div class="container-fluid mt-4">
+                <div class="row">
+
+                    <!-- LEFT SIDEBAR -->
+                    <div class="col-md-3">
+                        <div class="filter-sidebar">
+
+                            <!-- PRICE FILTER -->
+                           <div class="filter-section">
+                                <div class="filter-header" onclick="toggleFilter('priceFilter')">
+                                    <h5>Price</h5>
+                                    
+                                </div>
+                                <div id="priceFilter" class="filter-content">
+                                    <a href="?price=1-10" class="filter-option">$1 - $10</a>
+                                    <a href="?price=10-20" class="filter-option">$10 - $20</a>
+                                    <a href="?price=20-30" class="filter-option">$20 - $30</a>
+                                    <a href="?price=30-40" class="filter-option">$30 - $40</a>
+                                </div>
+                            </div>
+
+                            <!-- CATEGORY FILTER -->
+                            <div class="filter-section">
+                                <div class="filter-header" onclick="toggleFilter('categoryFilter')">
+                                    <h5>Category</h5>
+                                
+                                </div>
+                                <div id="categoryFilter" class="filter-content">
+                                    <a href="?category=fruit" class="filter-option">Fruit</a>
+                                    <a href="?category=vegetable" class="filter-option">Vegetable</a>
+                                    <a href="?category=meat" class="filter-option">Meat</a>
+                                    <a href="?category=beverage" class="filter-option">Beverage</a>
+                                    <a href="?category=snack" class="filter-option">Snack</a>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <!-- RIGHT PRODUCT GRID -->
+                    <div class="col-md-9">
+                        <h2>Search Results for "<%= query %>"</h2>
+
+                        <div class="row g-4">
+                            <% products.forEach(product => { %>
+                            <div class="col-md-4 col-sm-6">
+                                <div class="product-card-hover">
+                                    <div class="hover-img-container">
+
+                                        <a href="/product/<%= product.id %>">
+                                            <img src="/images/<%= product.image %>" class="hover-product-img">
+                                        </a>
+
+                                        <div class="hover-overlay">
+                                            <h4><%= product.productName %></h4>
+                                            <p class="hover-price">$<%= product.price.toFixed(2) %></p>
+
+                                            <% if (user) { %>
+                                            <form action="/add-to-cart/<%= product.id %>" method="POST">
+                                                <button class="hover-btn" type="submit">
+                                                    Add to Cart <i class="ri-shopping-cart-2-fill"></i>
+                                                </button>
+                                            </form>
+                                            <% } else { %>
+                                            <a href="/register" class="hover-btn-outline">Register to Buy</a>
+                                            <% } %>
+                                        </div>
+
+                                    </div>
+                                </div>
+                            </div>
+                            <% }) %>
+                        </div>
+                    </div>
+                </div>
+               
+            </div>
+
+        </main>
+        <%- include('partials/footer') %>
+    </body>
+</html>

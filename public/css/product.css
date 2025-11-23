@@ -1,70 +1,79 @@
-/* Background Theme */
+/* Background */
 body {
     background: linear-gradient(to bottom, #fff7e1, #f9e9c7);
     font-family: "Poppins", sans-serif;
-    padding-bottom: 60px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
 }
 
-/* Page Title */
-.container h2 {
-    font-weight: 800;
-    color: #4b2e05;
-    margin-bottom: 25px;
+.page-wrapper {
+    flex: 1;
 }
 
-/* Welcome Text */
-.container p:first-child {
-    font-size: 16px;
-    font-weight: 600;
-    color: #7a5b2a;
+/* Title */
+.page-title {
+    color: #4b2e05 !important;
 }
 
 /* Product Card */
-.product-box {
-    background: #ffffff;
+.product-card {
+    background: white;
     border-radius: 14px;
-    padding: 25px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.08);
-    max-width: 650px;
-    margin: 0 auto;
+    max-width: 480px;
+    margin: 20px auto;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
 }
 
-/* Product Info Labels */
-.product-box p b {
-    color: #4b2e05;
-    font-size: 18px;
-}
-
-/* Product Name, Price, etc */
-.product-box p {
+.product-card p {
     font-size: 17px;
-    color: #5c4b31;
-    margin-bottom: 12px;
+    color: #4b2e05;
 }
 
 /* Product Image */
 .product-img {
-    width: 40%;
+    width: 230px;
+    display: block;
+    margin: 0 auto;
     border-radius: 12px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.18);
-    margin-top: 6px;
-    margin-bottom: 18px;
+    box-shadow: 0px 6px 16px rgba(0,0,0,0.15);
+}
+
+/* Add to Cart Button */
+.add-cart-btn {
+    background: #f4c33d;
+    color: #4b2e05;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-weight: 600;
+    border: none;
+    display: inline-block;
+    width: 100%;
+    margin-top: 15px;
+    transition: 0.25s ease;
+}
+
+.add-cart-btn:hover {
+    background: #e0ad29;
+    color: #fff;
+    transform: translateY(-2px);
 }
 
 /* Back Button */
 .back-btn {
     display: inline-block;
-    background: #f4c33d;
+    background: #ffffff;
+    border: 2px solid #f4c33d;
     color: #4b2e05;
-    padding: 10px 26px;
-    border-radius: 10px;
+    padding: 8px 20px;
+    border-radius: 8px;
     font-weight: 600;
     text-decoration: none;
     transition: 0.25s ease;
 }
 
 .back-btn:hover {
-    background: #e0ad29;
-    color: white;
-    box-shadow: 0 5px 12px rgba(0,0,0,0.15);
+    background: #f4c33d;
+    color: #fff;
+    transform: translateY(-2px);
 }
