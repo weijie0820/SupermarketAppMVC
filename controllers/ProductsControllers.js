@@ -5,35 +5,34 @@ const Products = require('../models/Products');
 module.exports = {
 
     // List products depending on user role
-  list: function (req, res) {
-    const user = req.session.user;
+    list: function (req, res) {
+        const user = req.session.user || null;
 
-    Products.getAll(function (err, products) {
-        if (err) {
-            console.error('Error fetching products:', err);
-            return res.status(500).render('error', { error: err });
-        }
+        Products.getAll(function (err, products) {
+            if (err) {
+                console.error('Error fetching products:', err);
+                return res.status(500).render('error', { error: err });
+            }
 
-        // 1️⃣ Not logged in → show shopping page (view-only)
-        if (!user) {
-            return res.render('shopping', { products, user: null });
-        }
+            // Guest → shopping
+            if (!user) {
+                return res.render('shopping', { products, user: null });
+            }
 
-        // 2️⃣ Admin → show inventory
-        if (user.role === 'admin') {
-            return res.render('inventory', { products, user });
-        }
+            // Admin → inventory page
+            if (user.role === 'admin') {
+                return res.render('inventory', { products, user });
+            }
 
-        // 3️⃣ Normal user → show shopping
-        return res.render('shopping', { products, user });
-    });
-},
-
+            // User → shopping
+            return res.render('shopping', { products, user });
+        });
+    },
 
     // Show product details
     getById: function (req, res) {
         const id = req.params.id;
-        const user = req.session.user;
+        const user = req.session.user || null;   // ← FIX HERE
 
         Products.getById(id, function (err, product) {
             if (err) {
@@ -45,6 +44,7 @@ module.exports = {
                 return res.status(404).render('error', { error: 'Product not found' });
             }
 
+            // SAFE render: guest gets user = null
             res.render('product', { product, user });
         });
     },

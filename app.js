@@ -119,7 +119,7 @@ const validateRegistration = (req, res, next) => {
 //email otp//
 const otpCache = {};
 // optionally set TTL cleanup; simple approach below:
-function setOTP(email, otp, ttlMs = 3 * 60 * 1000) { // 3 minutes
+function setOTP(email, otp, ttlMs = 60 * 1000) { // 1 minutes
   otpCache[email] = { code: otp, expiresAt: Date.now() + ttlMs };
   // auto-cleanup after ttl
   setTimeout(() => {
@@ -440,7 +440,7 @@ app.get('/logout', (req, res) => {
 
 
 // Product detail -> controller handles rendering
-app.get('/product/:id', checkAuthenticated, ProductsController.getById);
+app.get('/product/:id', ProductsController.getById);
 
 // Add product form -> controller renders form (admin protected)
 app.get('/addProduct', checkAuthenticated, checkAdmin, ProductsController.renderAddForm);

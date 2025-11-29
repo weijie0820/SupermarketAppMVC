@@ -17,7 +17,9 @@
 
         <div class="container py-5">
 
-            <p>Welcome, <%= user.username %> (<%= user.role %>)</p>
+            <% if (user) { %>
+                <p>Welcome, <%= user.username %> (<%= user.role %>)</p>
+            <% } %>
 
             <div class="text-center">
                 <h2 class="fw-bold page-title">Product Details</h2>
@@ -37,11 +39,17 @@
                 <p><b>Price:</b><br> $<%= product.price.toFixed(2) %></p>
 
                 <% if (user) { %>
-                <form action="/add-to-cart/<%= product.id %>" method="POST">
-                    <button class="add-cart-btn">
-                        Add to Cart <i class="ri-shopping-cart-2-fill"></i>
-                    </button>
-                </form>
+                    <!-- Logged-in user -->
+                    <form action="/add-to-cart/<%= product.id %>" method="POST">
+                        <button class="add-cart-btn">
+                            Add to Cart <i class="ri-shopping-cart-2-fill"></i>
+                        </button>
+                    </form>
+                <% } else { %>
+                    <!-- Guest user -->
+                    <a href="/register" class="add-cart-btn">
+                        Register to Buy <i class="ri-user-add-fill"></i>
+                    </a>
                 <% } %>
 
             </div>
@@ -50,7 +58,7 @@
             <% } %>
 
             <div class="mt-4">
-                <% if (user.role === "admin") { %>
+                <% if (user && user.role === "admin") { %>
                     <a href="/inventory" class="back-btn">← Back</a>
                 <% } else { %>
                     <a href="/shopping" class="back-btn">← Back</a>
