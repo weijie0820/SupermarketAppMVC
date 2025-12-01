@@ -27,6 +27,8 @@ const storage = multer.diskStorage({
 });
 
 
+const loginOtpCache = {};
+
 
 const upload = multer({ storage: storage });
 
@@ -73,9 +75,14 @@ app.use(flash());
 
 // Make session user available to all views (so controllers can render without extra params)
 app.use((req, res, next) => {
-    res.locals.user = req.session ? req.session.user : null;
+    res.locals.user = req.session.user || null;
+    res.locals.messages = {
+        error: req.flash('error'),
+        success: req.flash('success')
+    };
     next();
 });
+
 
 
 
@@ -265,58 +272,104 @@ app.post('/login', (req, res) => {
     }
 
     const sql = 'SELECT * FROM users WHERE email = ? AND password = SHA1(?)';
-    connection.query(sql, [email, password], (err, results) => {
+    connection.query(sql, [email, password], async (err, results) => {
         if (err) throw err;
 
-        // ✅ Verified user
-        if (results.length > 0 && results[0].verified == 1) {
-            req.session.user = results[0];
-            req.flash('success', 'Login successful!');
-            return results[0].role === 'user'
-                ? res.redirect('/shopping')
-                : res.redirect('/inventory');
+        // If user not found
+        if (results.length === 0) {
+            req.flash('error', 'Invalid email or password.');
+            return res.redirect('/login');
         }
 
-        // ❌ User exists but not verified
-        else if (results.length > 0 && results[0].verified == 0) {
+        const user = results[0];
+
+        // If not verified from registration, block login
+        if (user.verified == 0) {
             req.flash('error', 'Please verify your email before logging in.');
             return res.redirect('/otp?email=' + email);
         }
 
-        // ❌ No match at all
-        else {
-            req.flash('error', 'Invalid email or password.');
-            return res.redirect('/login');
-        }
+        // 🔵 STEP 1: Generate login OTP
+        const loginOTP = generateOTP();
+
+        // 🔵 STEP 2: Save OTP for login
+        loginOtpCache[email] = {
+            code: loginOTP,
+            expiresAt: Date.now() + 60 * 1000   // 1 minute validity
+        };
+
+        // 🔵 STEP 3: Email OTP
+        await sendOTP(email, loginOTP);
+
+        // 🔵 STEP 4: Store user temporarily before they pass OTP
+        req.session.tempUser = user;
+
+        req.flash('success', 'An OTP has been sent to your email to verify your login.');
+        return res.redirect(`/otp?email=${encodeURIComponent(email)}&loginVerify=1&sent=1`);
     });
 });
+
 
 //OTP
 app.post('/verifyOTP', (req, res) => {
     const { email, otp } = req.body;
+
     if (!email || !otp) {
         return res.redirect(`/otp?error=${encodeURIComponent('Missing email or OTP')}`);
     }
 
-    const cached = otpCache[email];
-    if (!cached || Date.now() > cached.expiresAt) {
-        if (cached) delete otpCache[email];
-        return res.redirect(`/otp?error=${encodeURIComponent('OTP expired or invalid')}&email=${encodeURIComponent(email)}`);
+    // Registration OTP
+    const regCached = otpCache[email];
+
+    // Login OTP
+    const loginCached = loginOtpCache[email];
+
+    // 🔵 LOGIN OTP CHECK FIRST
+    if (loginCached) {
+        if (Date.now() > loginCached.expiresAt) {
+            delete loginOtpCache[email];
+            return res.redirect(`/otp?error=OTP expired&email=${email}`);
+        }
+
+       if (loginCached.code === otp.trim()) {
+            // OTP correct → Login success
+            const loggedInUser = req.session.tempUser; // store temp user
+
+            req.session.user = loggedInUser;
+            delete req.session.tempUser;
+            delete loginOtpCache[email];
+
+            // Redirect based on role
+            if (loggedInUser.role === 'admin') {
+                return res.redirect('/inventory');
+            } else {
+                return res.redirect('/shopping');
+            }
+        }
+
+        return res.redirect(`/otp?error=Invalid OTP&email=${email}`);
     }
 
-    if (cached.code === otp.trim()) {
+    // 🔴 REGISTRATION OTP CHECK
+    if (!regCached || Date.now() > regCached.expiresAt) {
+        delete otpCache[email];
+        return res.redirect(`/otp?error=OTP expired or invalid&email=${email}`);
+    }
+
+    if (regCached.code === otp.trim()) {
         delete otpCache[email];
 
-        // ✅ Mark user verified in DB
+        // Mark verified in DB
         connection.query(
             'UPDATE users SET verified = 1 WHERE email = ?',
             [email],
             () => res.redirect('/login?verified=1')
         );
     } else {
-        return res.redirect(`/otp?error=${encodeURIComponent('Invalid OTP')}&email=${encodeURIComponent(email)}`);
+        return res.redirect(`/otp?error=Invalid OTP&email=${email}`);
     }
 });
+
 
 app.get('/otp', (req, res) => {
   // Pass query strings to view so it can show messages / prefill
@@ -399,6 +452,9 @@ app.post('/checkout', OrderControllers.showCheckout);
 app.get('/order/invoice/:id', (req, res) => {
     OrderControllers.viewInvoice(req, res);
 });
+app.get('/order/invoice/:id/pdf', OrderControllers.downloadInvoicePDF);
+app.get('/order/invoice/:id/email', OrderControllers.emailInvoicePDF);
+
 
 //Order History Route
 app.get('/orders/history', (req, res) => {

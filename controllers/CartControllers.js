@@ -1,17 +1,28 @@
+// controllers/CartControllers.js
 const Cart = require('../models/Cart');
 
 const CartControllers = {
 
+    // ------------------------------------------------------
+    // VIEW CART
+    // ------------------------------------------------------
     viewCart(req, res) {
         const user = req.session.user;
         if (!user) return res.redirect('/login');
 
         Cart.getUserCart(user.id, (err, items) => {
             if (err) return res.status(500).send("DB error");
-            res.render("cart", { cart: items, user });
+
+            res.render("cart", {
+                cart: items
+                // messages automatically available from res.locals
+            });
         });
     },
 
+    // ------------------------------------------------------
+    // ADD TO CART (DB VERSION + FLASH)
+    // ------------------------------------------------------
     addToCart(req, res) {
         const user = req.session.user;
         if (!user) return res.redirect('/login');
@@ -19,88 +30,124 @@ const CartControllers = {
         const productId = req.params.id;
         const qty = parseInt(req.body.quantity || 1);
 
-        Cart.addItem(user.id, productId, qty, (err) => {
-            if (err) return res.status(500).send("DB error");
+        Cart.addItem(user.id, productId, qty, (result) => {
+            if (result && result.error) {
+                req.flash("error", result.error);
+                return res.redirect('/cart');
+            }
+
+            req.flash("success", "Item added to cart!");
             res.redirect('/cart');
         });
     },
 
+    // ------------------------------------------------------
+    // INCREASE QTY (+1) WITH STOCK VALIDATION
+    // ------------------------------------------------------
     increaseQty(req, res) {
         const user = req.session.user;
         if (!user) return res.redirect('/login');
 
         const productId = req.params.id;
 
-        Cart.increase(user.id, productId, (err) => {
-            if (err) return res.status(500).send("DB error");
+        Cart.increase(user.id, productId, (result) => {
+            if (result && result.error) {
+                req.flash("error", result.error);
+                return res.redirect('/cart');
+            }
+
+            req.flash("success", "Quantity updated");
             res.redirect('/cart');
         });
     },
 
+    // ------------------------------------------------------
+    // DECREASE QTY (-1) OR REMOVE
+    // ------------------------------------------------------
     decreaseQty(req, res) {
         const user = req.session.user;
         if (!user) return res.redirect('/login');
 
-        const productId = req.params.id;
-
-        Cart.decrease(user.id, productId, (err) => {
-            if (err) return res.status(500).send("DB error");
+        Cart.decrease(user.id, req.params.id, (result) => {
+            if (result && result.error) {
+                req.flash("error", result.error);
+            }
             res.redirect('/cart');
         });
     },
 
+    // ------------------------------------------------------
+    // UPDATE TYPED QUANTITY (e.g. user types 10)
+    // ------------------------------------------------------
     updateQtyTyped(req, res) {
-    const user = req.session.user;
-    if (!user) return res.redirect('/login');
+        const user = req.session.user;
+        if (!user) return res.redirect('/login');
 
-    const productId = req.params.id;
-    const newQty = parseInt(req.body.quantity);
+        const newQty = parseInt(req.body.quantity);
+        const productId = req.params.id;
 
-    Cart.updateQuantity(user.id, productId, newQty, (err) => {
-        if (err) return res.status(500).send("DB error");
-        res.redirect('/cart');
-    });
-},
+        Cart.updateQuantity(user.id, productId, newQty, (result) => {
+            if (result && result.error) {
+                req.flash("error", result.error);
+                return res.redirect('/cart');
+            }
 
-updateMultiple(req, res) {
-    const user = req.session.user;
-    if (!user) return res.redirect('/login');
+            req.flash("success", "Quantity updated");
+            res.redirect('/cart');
+        });
+    },
 
-    const quantities = req.body.quantities;   // e.g. { "3": "2", "5": "4" }
+    // ------------------------------------------------------
+    // UPDATE MULTIPLE FROM CHECKOUT FORM
+    // ------------------------------------------------------
+    updateMultiple(req, res) {
+        const user = req.session.user;
+        if (!user) return res.redirect('/login');
 
-    const tasks = Object.entries(quantities).map(([productId, qty]) => {
-        return new Promise((resolve, reject) => {
-            Cart.updateQuantity(user.id, productId, parseInt(qty), (err) => {
-                if (err) reject(err);
-                else resolve();
+        const quantities = req.body.quantities;
+
+        const tasks = Object.entries(quantities).map(([productId, qty]) => {
+            return new Promise((resolve, reject) => {
+                Cart.updateQuantity(user.id, productId, parseInt(qty), (result) => {
+                    if (result && result.error) reject(result.error);
+                    else resolve();
+                });
             });
         });
-    });
 
-    Promise.all(tasks)
-        .then(() => res.redirect('/cart'))
-        .catch(() => res.status(500).send("DB error"));
-},
+        Promise.all(tasks)
+            .then(() => {
+                req.flash("success", "Cart updated");
+                res.redirect('/cart');
+            })
+            .catch(err => {
+                req.flash("error", err);
+                res.redirect('/cart');
+            });
+    },
 
-
+    // ------------------------------------------------------
+    // REMOVE PRODUCT FROM CART
+    // ------------------------------------------------------
     remove(req, res) {
         const user = req.session.user;
         if (!user) return res.redirect('/login');
 
-        const productId = req.params.id;
-
-        Cart.remove(user.id, productId, (err) => {
-            if (err) return res.status(500).send("DB error");
+        Cart.remove(user.id, req.params.id, () => {
+            req.flash("success", "Item removed");
             res.redirect('/cart');
         });
     },
 
+    // ------------------------------------------------------
+    // CLEAR CART
+    // ------------------------------------------------------
     clear(req, res) {
         const user = req.session.user;
         if (!user) return res.redirect('/login');
 
-        Cart.clear(user.id, (err) => {
-            if (err) return res.status(500).send("DB error");
+        Cart.clear(user.id, () => {
+            req.flash("success", "Cart cleared");
             res.redirect('/cart');
         });
     }

@@ -43,6 +43,18 @@
 
 
                 <a href="/shopping" class="btn btn-primary mt-3">Continue Shopping</a>
+
+                <a href="/order/invoice/<%= order.order_id %>/pdf" 
+                    class="btn btn-warning mt-3">
+                    Download Invoice (PDF)
+                </a>
+
+                <a href="/order/invoice/<%= order.order_id %>/email" 
+                    class="btn btn-info mt-3 ms-3">
+                    Email Invoice PDF
+                </a>
+
+
             </div>
             <%- include('partials/footer') %>
         </body>
