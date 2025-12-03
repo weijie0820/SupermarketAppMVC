@@ -1,5 +1,5 @@
 const randomstring = require("randomstring");
-const db = require('../db');
+const db = require("../db");
 const PDFDocument = require("pdfkit");
 const fs = require("fs");
 const path = require("path");
@@ -11,11 +11,11 @@ const nodemailer = require("nodemailer");
 function generateInvoicePDF(order, items, filePath) {
     return new Promise((resolve, reject) => {
         const doc = new PDFDocument({ margin: 40 });
-
         const stream = fs.createWriteStream(filePath);
+
         doc.pipe(stream);
 
-        // ---------- Header ----------
+        // Header
         doc.fontSize(24).text("Supermarket App - Invoice", { align: "center" });
         doc.moveDown(1.5);
 
@@ -24,7 +24,7 @@ function generateInvoicePDF(order, items, filePath) {
         doc.text(`Status: ${order.status}`);
         doc.moveDown(1);
 
-        // ---------- Table Header ----------
+        // Items
         doc.fontSize(18).text("Items");
         doc.moveDown(0.5);
 
@@ -37,9 +37,11 @@ function generateInvoicePDF(order, items, filePath) {
         });
 
         doc.moveDown(1);
-        doc.fontSize(16).text(`Total Amount: $${Number(order.total_amount).toFixed(2)}`, {
-            align: "right"
-        });
+
+        doc.fontSize(16).text(
+            `Total Amount: $${Number(order.total_amount).toFixed(2)}`,
+            { align: "right" }
+        );
 
         doc.end();
 
@@ -51,7 +53,7 @@ function generateInvoicePDF(order, items, filePath) {
 // ==========================================================
 // 📌 SHOW CHECKOUT PAGE
 // ==========================================================
-exports.showCheckout = (req, res) => {
+function showCheckout(req, res) {
     const userId = req.session.user?.id;
     if (!userId) return res.redirect("/login");
 
@@ -68,17 +70,20 @@ exports.showCheckout = (req, res) => {
     `;
 
     db.query(query, [userId, ...selected], (err, items) => {
-        const totalAmount = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+        const totalAmount = items.reduce(
+            (sum, item) => sum + item.price * item.quantity,
+            0
+        );
         res.render("checkout", { cart: items, totalAmount });
     });
-};
+}
 
 // ==========================================================
 // 📌 CREATE ORDER
 // ==========================================================
-exports.createOrder = (req, res) => {
+function createOrder(req, res) {
     const userId = req.session.user?.id;
-    if (!userId) return res.redirect('/login');
+    if (!userId) return res.redirect("/login");
 
     let selectedIds = [];
     try {
@@ -100,16 +105,16 @@ exports.createOrder = (req, res) => {
         (err, cartItems) => {
             if (err) throw err;
 
-            let totalAmount = cartItems.reduce(
+            const totalAmount = cartItems.reduce(
                 (sum, item) => sum + item.price * item.quantity,
                 0
             );
 
-            // Generate invoice number using timestamp + random code
+            // Timestamp-based invoice
             const timestamp = new Date()
                 .toISOString()
-                .replace(/[-T:.Z]/g, "") // Remove symbols
-                .slice(0, 14); // Keep YYYYMMDDHHMMSS
+                .replace(/[-T:.Z]/g, "")
+                .slice(0, 14);
 
             const invoiceNumber = `INV-${timestamp}-${randomstring.generate({
                 length: 4,
@@ -125,16 +130,14 @@ exports.createOrder = (req, res) => {
 
                     const orderId = orderResult.insertId;
 
-                    // Save order items + update stock
                     cartItems.forEach(item => {
                         db.query(
                             `INSERT INTO order_items 
-                            (order_id, product_id, quantity, price_per_unit, created_at)
+                             (order_id, product_id, quantity, price_per_unit, created_at)
                              VALUES (?, ?, ?, ?, NOW())`,
                             [orderId, item.product_id, item.quantity, item.price]
                         );
 
-                        // Reduce stock safely
                         db.query(
                             `UPDATE products 
                              SET quantity = GREATEST(quantity - ?, 0)
@@ -143,7 +146,6 @@ exports.createOrder = (req, res) => {
                         );
                     });
 
-                    // Clear selected items from cart
                     db.query(
                         `DELETE FROM cart_itemsss 
                          WHERE user_id = ? AND product_id IN (${placeholders})`,
@@ -155,22 +157,23 @@ exports.createOrder = (req, res) => {
             );
         }
     );
-};
+}
 
 // ==========================================================
 // 📌 VIEW INVOICE
 // ==========================================================
-exports.viewInvoice = (req, res) => {
+function viewInvoice(req, res) {
     const orderId = req.params.id;
     const userId = req.session.user?.id;
 
-    if (!userId) return res.redirect('/login');
+    if (!userId) return res.redirect("/login");
 
     db.query(
         `SELECT * FROM orders WHERE order_id = ? AND user_id = ?`,
         [orderId, userId],
         (err, orderResults) => {
-            if (err || orderResults.length === 0) return res.send("Order not found.");
+            if (err || orderResults.length === 0)
+                return res.send("Order not found.");
 
             db.query(
                 `SELECT oi.*, p.productName, p.image
@@ -178,35 +181,37 @@ exports.viewInvoice = (req, res) => {
                  JOIN products p ON oi.product_id = p.id
                  WHERE oi.order_id = ?`,
                 [orderId],
-                (err, itemResults) => {
+                (err, items) => {
                     if (err) throw err;
+
                     res.render("invoice", {
                         order: orderResults[0],
-                        items: itemResults
+                        items,
                     });
                 }
             );
         }
     );
-};
+}
 
 // ==========================================================
 // 📌 DOWNLOAD PDF
 // ==========================================================
-exports.downloadInvoicePDF = (req, res) => {
+function downloadInvoicePDF(req, res) {
     const orderId = req.params.id;
     const userId = req.session.user?.id;
 
-    if (!userId) return res.redirect('/login');
+    if (!userId) return res.redirect("/login");
 
     db.query(
         `SELECT * FROM orders WHERE order_id = ? AND user_id = ?`,
         [orderId, userId],
         (err, orderResults) => {
-            if (err || orderResults.length === 0) return res.send("Order not found.");
+            if (err || orderResults.length === 0)
+                return res.send("Order not found.");
 
             db.query(
-                `SELECT oi.*, p.productName
+                `SELECT oi.*, p.productName 
                  FROM order_items oi
                  JOIN products p ON oi.product_id = p.id
                  WHERE oi.order_id = ?`,
@@ -228,22 +233,23 @@ exports.downloadInvoicePDF = (req, res) => {
             );
         }
     );
-};
+}
 
 // ==========================================================
 // 📌 EMAIL PDF
 // ==========================================================
-exports.emailInvoicePDF = (req, res) => {
+function emailInvoicePDF(req, res) {
     const orderId = req.params.id;
     const user = req.session.user;
 
-    if (!user) return res.redirect('/login');
+    if (!user) return res.redirect("/login");
 
     db.query(
         `SELECT * FROM orders WHERE order_id = ? AND user_id = ?`,
         [orderId, user.id],
         (err, orderResults) => {
-            if (err || orderResults.length === 0) return res.send("Order not found.");
+            if (err || orderResults.length === 0)
+                return res.send("Order not found.");
 
             db.query(
                 `SELECT oi.*, p.productName
@@ -255,21 +261,20 @@ exports.emailInvoicePDF = (req, res) => {
                     if (err) return res.send("Error loading items.");
 
                     const order = orderResults[0];
-                    const folder = path.join(__dirname, "../invoices");
 
+                    const folder = path.join(__dirname, "../invoices");
                     if (!fs.existsSync(folder)) fs.mkdirSync(folder);
 
                     const pdfPath = path.join(folder, `invoice_${orderId}.pdf`);
 
                     await generateInvoicePDF(order, items, pdfPath);
 
-                    // Send email with PDF
                     const transporter = nodemailer.createTransport({
                         service: "gmail",
                         auth: {
                             user: process.env.EMAIL_USER,
-                            pass: process.env.EMAIL_PASS
-                        }
+                            pass: process.env.EMAIL_PASS,
+                        },
                     });
 
                     await transporter.sendMail({
@@ -277,7 +282,9 @@ exports.emailInvoicePDF = (req, res) => {
                         to: user.email,
                         subject: "Your Invoice from Supermarket App",
                         text: "Please find your invoice attached.",
-                        attachments: [{ filename: `invoice_${orderId}.pdf`, path: pdfPath }]
+                        attachments: [
+                            { filename: `invoice_${orderId}.pdf`, path: pdfPath },
+                        ],
                     });
 
                     req.flash("success", "Invoice PDF has been emailed to you!");
@@ -286,4 +293,38 @@ exports.emailInvoicePDF = (req, res) => {
             );
         }
     );
+}
+
+// ==========================================================
+// 📌 ORDER HISTORY (IMPORTANT — YOU MISSED THIS)
+// ==========================================================
+function getOrderHistory(req, res) {
+    const userId = req.session.user?.id;
+
+    if (!userId) return res.redirect("/login");
+
+    db.query(
+        `SELECT order_id, invoice_number, order_date, total_amount, status
+         FROM orders
+         WHERE user_id = ?
+         ORDER BY order_date DESC`,
+        [userId],
+        (err, results) => {
+            if (err) throw err;
+
+            res.render("order_history", { orders: results });
+        }
+    );
+}
+
+// ==========================================================
+// 📌 EXPORT ALL CONTROLLERS
+// ==========================================================
+module.exports = {
+    showCheckout,
+    createOrder,
+    viewInvoice,
+    downloadInvoicePDF,
+    emailInvoicePDF,
+    getOrderHistory,
 };
