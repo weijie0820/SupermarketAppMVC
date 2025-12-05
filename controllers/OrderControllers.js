@@ -116,10 +116,7 @@ function createOrder(req, res) {
                 .replace(/[-T:.Z]/g, "")
                 .slice(0, 14);
 
-            const invoiceNumber = `INV-${timestamp}-${randomstring.generate({
-                length: 4,
-                charset: "alphanumeric",
-            })}`;
+            const invoiceNumber = `INV-${timestamp}`;
 
             db.query(
                 `INSERT INTO orders (user_id, order_date, total_amount, status, invoice_number)
