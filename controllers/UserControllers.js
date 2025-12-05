@@ -3,7 +3,7 @@ const randomstring = require('randomstring');
 const nodemailer = require('nodemailer');
 
 // =========================
-// Email OTP Helper Functions
+// Email OTP Helper
 // =========================
 const otpCache = {};
 
@@ -38,7 +38,6 @@ async function sendOTP(email, otp) {
 }
 
 
-
 // =====================================
 //         USER CONTROLLER OBJECT
 // =====================================
@@ -53,46 +52,45 @@ const UserControllers = {
     },
 
     // ---------- Register User ----------
-   register(req, res) {
-    const { username, email, password, address, contact } = req.body;
-    const role = "user";  // Always default to user
+    register(req, res) {
+        const { username, email, password, address, contact } = req.body;
+        const role = "user";  // default role
 
-    // Check duplicate email
-    connection.query(
-        "SELECT * FROM users WHERE email = ?",
-        [email],
-        (err, results) => {
-            if (err) throw err;
+        // Check duplicate email
+        connection.query(
+            "SELECT * FROM users WHERE email = ? AND is_deleted = 0",
+            [email],
+            (err, results) => {
+                if (err) throw err;
 
-            if (results.length > 0) {
-                req.flash("error", "Email already registered.");
-                req.flash("formData", req.body);
-                return res.redirect("/register");
-            }
-
-            // Insert new user with default role
-            const sql = `
-                INSERT INTO users (username, email, password, address, contact, role, verified)
-                VALUES (?, ?, SHA1(?), ?, ?, ?, 0)
-            `;
-
-            connection.query(sql,
-                [username, email, password, address, contact, role],
-                async (err2) => {
-                    if (err2) throw err2;
-
-                    const otp = generateOTP();
-                    setOTP(email, otp);
-                    await sendOTP(email, otp);
-
-                    req.flash("success", "Registration successful! Check your email for OTP.");
-                    res.redirect(`/otp?email=${email}&sent=1`);
+                if (results.length > 0) {
+                    req.flash("error", "Email already registered.");
+                    req.flash("formData", req.body);
+                    return res.redirect("/register");
                 }
-            );
-        }
-    );
-},
 
+                // Insert new user
+                const sql = `
+                    INSERT INTO users (username, email, password, address, contact, role, verified, is_deleted)
+                    VALUES (?, ?, SHA1(?), ?, ?, ?, 0, 0)
+                `;
+
+                connection.query(sql,
+                    [username, email, password, address, contact, role],
+                    async (err2) => {
+                        if (err2) throw err2;
+
+                        const otp = generateOTP();
+                        setOTP(email, otp);
+                        await sendOTP(email, otp);
+
+                        req.flash("success", "Registration successful! Check your email for OTP.");
+                        res.redirect(`/otp?email=${email}&sent=1`);
+                    }
+                );
+            }
+        );
+    },
 
 
     // ---------- Render Login Page ----------
@@ -108,13 +106,16 @@ const UserControllers = {
     login(req, res) {
         const { email, password } = req.body;
 
-        const sql = "SELECT * FROM users WHERE email = ? AND password = SHA1(?)";
+        const sql = `
+            SELECT * FROM users 
+            WHERE email = ? AND password = SHA1(?) AND is_deleted = 0
+        `;
 
         connection.query(sql, [email, password], (err, results) => {
             if (err) throw err;
 
             if (results.length === 0) {
-                req.flash("error", "Invalid email or password");
+                req.flash("error", "Invalid email or password.");
                 return res.redirect("/login");
             }
 
@@ -133,7 +134,6 @@ const UserControllers = {
         });
     },
 
-
     // ---------- Request OTP Again ----------
     async requestOTP(req, res) {
         const email = req.body.email;
@@ -144,7 +144,6 @@ const UserControllers = {
 
         res.redirect(`/otp?email=${email}&sent=1`);
     },
-
 
     // ---------- Verify OTP ----------
     verifyOTP(req, res) {
@@ -168,17 +167,18 @@ const UserControllers = {
         );
     },
 
-
-    // ---------- List All Users (Admin Only) ----------
+    // ---------- List Users ----------
     listUsers(req, res) {
-        connection.query("SELECT id, username, email, role FROM users", (err, users) => {
-            if (err) return res.status(500).send("Database error");
-            res.render("admin_users", { users, user: req.session.user });
-        });
+        connection.query(
+            "SELECT id, username, email, role FROM users WHERE is_deleted = 0",
+            (err, users) => {
+                if (err) return res.status(500).send("Database error");
+                res.render("admin_users", { users, user: req.session.user });
+            }
+        );
     },
 
-
-    // ---------- Update Role (Admin Only) ----------
+    // ---------- Update Role ----------
     updateRole(req, res) {
         const { user_id, new_role } = req.body;
 
@@ -187,14 +187,17 @@ const UserControllers = {
             return res.redirect("/admin/users");
         }
 
-        connection.query("UPDATE users SET role = ? WHERE id = ?", [new_role, user_id], () => {
-            req.flash("success", "Role updated successfully.");
-            res.redirect("/admin/users");
-        });
+        connection.query(
+            "UPDATE users SET role = ? WHERE id = ? AND is_deleted = 0",
+            [new_role, user_id],
+            () => {
+                req.flash("success", "Role updated successfully.");
+                res.redirect("/admin/users");
+            }
+        );
     },
 
-
-    // ---------- Delete User (Admin Only) ----------
+    // ---------- SOFT DELETE USER ----------
     deleteUser(req, res) {
         const { user_id } = req.body;
 
@@ -203,12 +206,16 @@ const UserControllers = {
             return res.redirect("/admin/users");
         }
 
-        connection.query("DELETE FROM users WHERE id = ?", [user_id], () => {
-            req.flash("success", "User deleted.");
-            res.redirect("/admin/users");
-        });
+        // Soft Delete → mark user as deleted
+        connection.query(
+            "UPDATE users SET is_deleted = 1 WHERE id = ?",
+            [user_id],
+            () => {
+                req.flash("success", "User removed from system.");
+                res.redirect("/admin/users");
+            }
+        );
     },
-
 
     // ---------- Logout ----------
     logout(req, res) {
@@ -216,6 +223,5 @@ const UserControllers = {
         res.redirect("/");
     }
 };
-
 
 module.exports = UserControllers;
