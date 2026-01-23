@@ -148,7 +148,7 @@ function createOrder(req, res) {
                         [userId, ...selectedIds]
                     );
 
-                    res.redirect(`/order/invoice/${orderId}`);
+                    res.redirect(`/payment/${orderId}`);
                 }
             );
         }
