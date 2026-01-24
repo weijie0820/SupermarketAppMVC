@@ -455,49 +455,25 @@ app.post('/order/create', OrderControllers.createOrder);
 app.post('/checkout', OrderControllers.showCheckout);
 
 //Payment Route
+app.get('/payment', checkAuthenticated, PaymentControllers.showPaymentPage);
 app.get('/payment/:id', checkAuthenticated, PaymentControllers.showPaymentPage);
+
 // PayPal: Create Order
 app.post('/api/paypal/create-order', async (req, res) => {
   try {
     const { amount } = req.body;
-    console.log("create-order body:", req.body); // ✅ debug
-
-    if (amount === undefined || amount === null || amount === "" || isNaN(Number(amount))) {
-      return res.status(400).json({ error: "Invalid amount", received: amount });
-    }
-
-    const order = await paypal.createOrder(Number(amount));
-
-    console.log("PayPal createOrder response:", order); // ✅ debug
-
-    if (order && order.id) {
-      return res.json({ id: order.id });
-    }
-    return res.status(500).json({ error: 'Failed to create PayPal order', details: order });
+    const order = await paypal.createOrder(amount);
+    if (order && order.id) return res.json({ id: order.id });
+    return res.status(500).json({ error: "Failed to create PayPal order", details: order });
   } catch (err) {
-    console.error("PayPal create-order error:", err);
-    return res.status(500).json({ error: 'Failed to create PayPal order', message: err.message });
+    return res.status(500).json({ error: "Failed to create PayPal order", message: err.message });
   }
 });
 
 
 // PayPal: Capture Order
-app.post('/api/paypal/capture-order', async (req, res) => {
-  try {
-    const { orderID } = req.body;
-    const capture = await paypal.captureOrder(orderID);
-console.log('PayPal captureOrder response:', capture);
+app.post('/api/paypal/capture-order', checkAuthenticated, PaymentControllers.capturePaypalOrder);
 
-    if (capture.status === "COMPLETED") {
-      // Call your pay method, passing transaction details and user info
-      return res.json({ success: true, status: capture.status, capture });
-    } else {
-      res.status(400).json({ error: 'Payment not completed', details: capture });
-    }
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to capture PayPal order', message: err.message });
-  }
-});
 
 //order Invoice Route
 app.get('/order/invoice/:id', (req, res) => {

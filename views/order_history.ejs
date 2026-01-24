@@ -31,7 +31,7 @@
                         <% orders.forEach(order => { %>
                         <tr>
                             <td><%= order.invoice_number %></td>
-                            <td><%= order.order_date.toLocaleString() %></td>
+                            <td><%= order.order_date ? new Date(order.order_date).toLocaleString() : '-' %></td>
                             <td>$<%= Number(order.total_amount).toFixed(2) %></td>
                             <td><%= order.status %></td>
                             <td>

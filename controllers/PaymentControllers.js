@@ -27,57 +27,93 @@ async function getPaypalAccessToken() {
 
 
 const PaymentControllers = {
-
-  // ✅ keep your existing payment page
+ // ✅ keep your existing payment page
   showPaymentPage: (req, res) => {
-    const orderId = req.params.id;
+      if (!req.session.user) return res.redirect('/login');
+      const userId = req.session.user.id;
 
-    if (!req.session.user) return res.redirect('/login');
-    const userId = req.session.user.id;
+      // ✅ CASE 1: /payment (no order created yet)
+      if (!req.params.id) {
+        let selectedIds = [];
+        try {
+          selectedIds = JSON.parse(req.session.selectedProducts || "[]");
+        } catch {
+          selectedIds = [];
+        }
 
-    db.query(
-      "SELECT * FROM orders WHERE order_id = ? AND user_id = ?",
-      [orderId, userId],
-      (err, orderResults) => {
-        if (err) return res.status(500).send("Database error (orders)");
-        if (orderResults.length === 0) return res.send("Order not found.");
+        if (!selectedIds.length) return res.redirect("/cart");
 
-        const order = orderResults[0];
+        const placeholders = selectedIds.map(() => "?").join(",");
 
         db.query(
-          `SELECT oi.*, p.productName, p.image
-           FROM order_items oi
-           JOIN products p ON oi.product_id = p.id
-           WHERE oi.order_id = ?`,
-          [orderId],
-          (err2, items) => {
-            if (err2) return res.status(500).send("Database error (order_items)");
+          `SELECT c.product_id, c.quantity, p.productName, p.price, p.image
+          FROM cart_itemsss c
+          JOIN products p ON c.product_id = p.id
+          WHERE c.user_id = ? AND c.product_id IN (${placeholders})`,
+          [userId, ...selectedIds],
+          (err, items) => {
+            if (err) return res.status(500).send("Database error (cart items)");
 
-            res.render("payment", {
-              order: order,
-              items: items,
-              totalAmount: order.total_amount,
+            const totalAmount = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+            return res.render("payment", {
+              order: null,
+              items,
+              totalAmount,
               paypalApprovalUrl: null,
               qrBase64: null,
               messages: res.locals.messages
             });
           }
         );
+
+        return;
       }
-    );
-  },
+
+      // ✅ CASE 2: /payment/:id (legacy / when you still want to support it)
+      const orderId = req.params.id;
+
+      db.query(
+        "SELECT * FROM orders WHERE order_id = ? AND user_id = ?",
+        [orderId, userId],
+        (err, orderResults) => {
+          if (err) return res.status(500).send("Database error (orders)");
+          if (orderResults.length === 0) return res.send("Order not found.");
+
+          const order = orderResults[0];
+
+          db.query(
+            `SELECT oi.*, p.productName, p.image
+            FROM order_items oi
+            JOIN products p ON oi.product_id = p.id
+            WHERE oi.order_id = ?`,
+            [orderId],
+            (err2, items) => {
+              if (err2) return res.status(500).send("Database error (order_items)");
+
+              return res.render("payment", {
+                order,
+                items,
+                totalAmount: order.total_amount,
+                paypalApprovalUrl: null,
+                qrBase64: null,
+                messages: res.locals.messages
+              });
+            }
+          );
+        }
+      );
+    },
+
 
   // ✅ POST /api/paypal/create-order
   createPaypalOrder: async (req, res) => {
-    try {
-      const userId = req.session.user.id;
-      const { orderId } = req.body;
+      try {
+        const { amount } = req.body;
 
-      Payment.getOrderById(orderId, userId, async (err, results) => {
-        if (err) return res.status(500).json({ error: "Database error (orders)" });
-        if (!results || results.length === 0) return res.status(404).json({ error: "Order not found" });
-
-        const order = results[0];
+        if (!amount || Number(amount) <= 0) {
+          return res.status(400).json({ error: "Invalid amount" });
+        }
 
         const accessToken = await getPaypalAccessToken();
 
@@ -85,10 +121,9 @@ const PaymentControllers = {
           intent: "CAPTURE",
           purchase_units: [
             {
-              reference_id: String(orderId),
               amount: {
                 currency_code: "SGD",
-                value: String(Number(order.total_amount).toFixed(2))
+                value: String(Number(amount).toFixed(2))
               }
             }
           ]
@@ -105,78 +140,150 @@ const PaymentControllers = {
           }
         );
 
-        // Same style as sample: return { id }
         return res.json({ id: ppRes.data.id });
-      });
+      } catch (e) {
+        return res.status(500).json({ error: "Failed to create PayPal order", message: e.message });
+      }
+    },
 
-    } catch (e) {
-      return res.status(500).json({ error: "Failed to create PayPal order", message: e.message });
-    }
-  },
 
   // ✅ POST /api/paypal/capture-order
   // body: { orderID, orderId }
   capturePaypalOrder: async (req, res) => {
-    try {
-      const userId = req.session.user.id;
-      const { orderID, orderId } = req.body;
+  try {
+    const userId = req.session.user.id;
+    const { orderID } = req.body;
 
-      const accessToken = await getPaypalAccessToken();
+    const accessToken = await getPaypalAccessToken();
 
-      const capRes = await axios.post(
-        PAYPAL_BASE + "/v2/checkout/orders/" + orderID + "/capture",
-        {},
-        {
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer " + accessToken
-          }
+    const capRes = await axios.post(
+      PAYPAL_BASE + "/v2/checkout/orders/" + orderID + "/capture",
+      {},
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + accessToken
         }
-      );
-
-      // follow sample: only accept COMPLETED :contentReference[oaicite:9]{index=9}
-      if (capRes.data.status !== "COMPLETED") {
-        return res.status(400).json({ error: "Payment not completed", details: capRes.data });
       }
+    );
 
-      // --- build transaction object (same idea as FinesController.pay) :contentReference[oaicite:10]{index=10}
-      const isoString = capRes.data.purchase_units[0].payments.captures[0].create_time;
-      const mysqlDatetime = isoString.replace("T", " ").replace("Z", "");
-
-      const payerEmail = capRes.data.payer ? capRes.data.payer.email_address : null;
-      const captureId = capRes.data.purchase_units[0].payments.captures[0].id;
-
-      const amount = capRes.data.purchase_units[0].payments.captures[0].amount.value;
-      const currency = capRes.data.purchase_units[0].payments.captures[0].amount.currency_code;
-
-      const txData = {
-        order_id: orderId,
-        user_id: userId,
-        status: "Paid",
-        amount: amount,
-        currency: currency,
-        paypal_order_id: capRes.data.id,
-        paypal_capture_id: captureId,
-        payer_email: payerEmail,
-        paid_at: mysqlDatetime
-      };
-
-      // 1) save transaction
-      Transaction.createPaypal(txData, (tErr) => {
-        if (tErr) return res.status(500).json({ error: "Database error (transactions)" });
-
-        // 2) update orders table paid
-        Payment.markOrderPaid(orderId, "PayPal", (pErr) => {
-          if (pErr) return res.status(500).json({ error: "Database error (orders update)" });
-
-          return res.json({ success: true, transaction: txData });
-        });
-      });
-
-    } catch (e) {
-      return res.status(500).json({ error: "Failed to capture PayPal order", message: e.message });
+    if (capRes.data.status !== "COMPLETED") {
+      return res.status(400).json({ error: "Payment not completed", details: capRes.data });
     }
+
+    // load selected products from session
+    let selectedIds = [];
+    try {
+      selectedIds = JSON.parse(req.session.selectedProducts || "[]");
+    } catch {
+      selectedIds = [];
+    }
+
+    if (!selectedIds.length) {
+      return res.status(400).json({ error: "No selected items to process" });
+    }
+
+    const placeholders = selectedIds.map(() => "?").join(",");
+
+    db.query(
+      `SELECT c.product_id, c.quantity, p.price
+       FROM cart_itemsss c
+       JOIN products p ON c.product_id = p.id
+       WHERE c.user_id = ? AND c.product_id IN (${placeholders})`,
+      [userId, ...selectedIds],
+      (err2, cartItems) => {
+        if (err2) return res.status(500).json({ error: "DB error loading cart items" });
+        if (!cartItems || cartItems.length === 0) return res.status(400).json({ error: "Cart items not found" });
+
+        const totalAmount = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+        const timestamp = new Date().toISOString().replace(/[-T:.Z]/g, "").slice(0, 14);
+        const invoiceNumber = "INV-" + timestamp;
+
+        // 1) create order
+       db.query(
+          `INSERT INTO orders (user_id, total_amount, status, payment_method, invoice_number, order_date, paid_at)
+            VALUES (?, ?, 'Paid', 'PayPal', ?, NOW(), NOW())`  ,
+          [userId, totalAmount, invoiceNumber],
+          (oErr, oRes) => {
+            if (oErr) {
+              console.error("ORDER INSERT ERROR =>", oErr);
+              return res.status(500).json({ error: "Order creation failed" });
+            }
+
+
+            const newOrderId = oRes.insertId;
+
+            // 2) insert items + deduct stock
+            cartItems.forEach(item => {
+              db.query(
+                `INSERT INTO order_items (order_id, product_id, quantity, price_per_unit)
+                 VALUES (?, ?, ?, ?)`,
+                [newOrderId, item.product_id, item.quantity, item.price]
+              );
+
+              db.query(
+                `UPDATE products SET quantity = quantity - ? WHERE id = ?`,
+                [item.quantity, item.product_id]
+              );
+            });
+
+            // 3) clear only selected items from cart
+            db.query(
+              `DELETE FROM cart_itemsss
+               WHERE user_id = ? AND product_id IN (${placeholders})`,
+              [userId, ...selectedIds],
+              (dErr) => {
+                if (dErr) return res.status(500).json({ error: "Failed to clear cart" });
+
+                delete req.session.selectedProducts;
+
+                // 4) now save transaction WITH the real order_id
+                const isoString = capRes.data.purchase_units[0].payments.captures[0].create_time;
+                const mysqlDatetime = isoString.replace("T", " ").replace("Z", "");
+
+                const payerEmail = capRes.data.payer ? capRes.data.payer.email_address : null;
+                const captureId = capRes.data.purchase_units[0].payments.captures[0].id;
+
+                const amount = capRes.data.purchase_units[0].payments.captures[0].amount.value;
+                const currency = capRes.data.purchase_units[0].payments.captures[0].amount.currency_code;
+
+                const txData = {
+                  order_id: newOrderId,
+                  user_id: userId,
+                  payment_method: "PayPal",
+                  payment_status: "Paid",
+                  amount: amount,
+                  currency: currency,
+                  paypal_order_id: capRes.data.id,
+                  paypal_capture_id: captureId,
+                  payer_email: payerEmail,
+                  paid_datetime: mysqlDatetime
+                };
+
+
+                Transaction.createPaypal(txData, (tErr) => {
+                  if (tErr) return res.status(500).json({ error: "Database error (transactions)" });
+
+                  return res.json({
+                    success: true,
+                    status: "COMPLETED",
+                    orderId: newOrderId
+                  });
+                });
+              }
+            );
+          }
+        );
+      }
+    );
+  } catch (e) {
+    return res.status(500).json({ error: "Failed to capture PayPal order", message: e.message });
   }
+},
+
+  
+
 };
 
 module.exports = PaymentControllers;
