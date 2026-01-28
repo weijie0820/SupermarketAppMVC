@@ -16,7 +16,7 @@ const ProductsController = require('./controllers/ProductsControllers');
 const PaymentControllers = require('./controllers/PaymentControllers');
 const paypal = require('./services/paypal');
 const hitpay= require('./services/hitpay');
-
+const nets= require('./services/nets');
 
 
 
@@ -568,6 +568,9 @@ app.get('/payment/hitpay/return', checkAuthenticated, async (req, res) => {
   }
 });
 
+// Nets QR Code
+app.post("/api/nets/qr/create", checkAuthenticated, PaymentControllers.createNetsQr);
+app.post("/api/nets/qr/query", checkAuthenticated, PaymentControllers.queryNetsQr);
 
 
 

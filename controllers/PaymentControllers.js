@@ -4,8 +4,11 @@ const db = require('../db');
 const Payment = require('../models/Payment');
 const Transaction = require('../models/Transaction');
 const hitpay = require("../services/hitpay");
+const nets = require("../services/nets");
 const PAYPAL_BASE = "https://api.sandbox.paypal.com";
 const HITPAY_BASE = process.env.HITPAY_BASE || "https://api.sandbox.hit-pay.com";
+const NETS_BASE = process.env.NETS_BASE || "https://sandbox.nets.openapipaas.com";
+const NETS_QR_TIMEOUT_MS = 3 * 60 * 1000;
 
 async function getPaypalAccessToken() {
   const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID;
@@ -456,6 +459,189 @@ const PaymentControllers = {
       return res.status(500).json({ error: "Failed to confirm HitPay PayNow", message: e.message });
     }
   },
+
+   createNetsQr: (req, res) => {
+  const userId = req.session.user?.id;
+  if (!userId) return res.status(401).json({ error: "Not logged in" });
+
+  let selectedIds = [];
+  try { selectedIds = JSON.parse(req.session.selectedProducts || "[]"); } catch { selectedIds = []; }
+
+  if (!Array.isArray(selectedIds) || selectedIds.length === 0) {
+    return res.status(400).json({ error: "No selected items" });
+  }
+
+  const placeholders = selectedIds.map(() => "?").join(",");
+
+  db.query(
+    `SELECT c.product_id, c.quantity, p.price
+     FROM cart_itemsss c
+     JOIN products p ON c.product_id = p.id
+     WHERE c.user_id = ? AND c.product_id IN (${placeholders})`,
+    [userId, ...selectedIds],
+    async (err, cartItems) => {
+      if (err) return res.status(500).json({ error: "DB error loading cart items" });
+      if (!cartItems || cartItems.length === 0) return res.status(400).json({ error: "Cart items not found" });
+
+      const totalAmount = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+      try {
+        const { v4: uuidv4 } = require("uuid");
+        const txnId = "sandbox_nets|m|" + uuidv4();
+
+        const netsRes = await nets.createNetsQr(totalAmount, txnId, "");
+        const data = netsRes?.result?.data;
+
+        const responseCode = data?.response_code;
+        const qrBase64Raw = data?.qr_code;
+        const netsRef = data?.txn_retrieval_ref;
+
+        if (responseCode !== "00" || !qrBase64Raw || !netsRef) {
+          return res.status(500).json({ error: "NETS QR request failed", netsRes });
+        }
+
+        // ✅ Save PENDING transaction WITHOUT creating order
+        const txData = {
+          order_id: null,
+          user_id: userId,
+          amount: Number(totalAmount).toFixed(2),
+          currency: "SGD",
+          nets_reference: netsRef,
+          qr_base64: qrBase64Raw,
+          payer_email: req.session.user?.email || null
+        };
+
+        Transaction.createNetsPending(txData, (tErr) => {
+          if (tErr) return res.status(500).json({ error: "Database error (transactions)" });
+
+          // save for query + timeout
+          req.session.nets_reference = netsRef;
+          req.session.nets_amount = Number(totalAmount).toFixed(2);
+          req.session.nets_qr_created_at = Date.now();
+
+          return res.json({
+            success: true,
+            nets_reference: netsRef,
+            qrBase64: "data:image/png;base64," + qrBase64Raw
+          });
+        });
+      } catch (e) {
+        return res.status(500).json({ error: "NETS API error", message: e.message });
+      }
+    }
+  );
+},
+
+
+
+
+   queryNetsQr: async (req, res) => {
+  const userId = req.session.user?.id;
+  if (!userId) return res.status(401).json({ error: "Not logged in" });
+
+  const netsRef = req.body?.nets_reference || req.session.nets_reference;
+  const createdAt = req.session.nets_qr_created_at;
+
+  if (!netsRef || !createdAt) return res.status(400).json({ error: "Missing NETS session data" });
+
+  // ✅ 3 minutes timeout
+  const TIMEOUT_MS = 3 * 60 * 1000;
+  if (Date.now() - Number(createdAt) > TIMEOUT_MS) {
+    // no order to update; just mark transaction expired
+    Transaction.markNetsPaid(netsRef, null, () => {}); // ignore if you don’t have an "Expired" function
+    return res.json({ success: true, paid: false, expired: true, status: "timed_out" });
+  }
+
+  try {
+    const qRes = await nets.queryNetsQr(netsRef);
+    const data = qRes?.result?.data || {};
+    const responseCode = String(data.response_code || "");
+
+    if (responseCode === "09") {
+      return res.json({ success: true, paid: false, expired: false, status: "pending" });
+    }
+
+    if (responseCode !== "00") {
+      return res.json({ success: true, paid: false, expired: false, status: "not_paid" });
+    }
+
+    // ✅ PAID: Now create the order
+    let selectedIds = [];
+    try { selectedIds = JSON.parse(req.session.selectedProducts || "[]"); } catch { selectedIds = []; }
+    if (!selectedIds.length) return res.status(400).json({ error: "Missing selectedProducts for finalization" });
+
+    const placeholders = selectedIds.map(() => "?").join(",");
+
+    db.query(
+      `SELECT c.product_id, c.quantity, p.price
+       FROM cart_itemsss c
+       JOIN products p ON c.product_id = p.id
+       WHERE c.user_id = ? AND c.product_id IN (${placeholders})`,
+      [userId, ...selectedIds],
+      (err2, cartItems) => {
+        if (err2) return res.status(500).json({ error: "DB error loading cart items" });
+        if (!cartItems || cartItems.length === 0) return res.status(400).json({ error: "Cart items not found" });
+
+        const totalAmount = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+        const invoiceNumber = "INV-" + Date.now();
+
+        // create order as Paid
+        db.query(
+          `INSERT INTO orders (user_id, total_amount, status, payment_method, invoice_number, order_date, paid_at)
+           VALUES (?, ?, 'Paid', 'NETS-QR', ?, NOW(), NOW())`,
+          [userId, totalAmount, invoiceNumber],
+          (oErr, oRes) => {
+            if (oErr) return res.status(500).json({ error: "Order creation failed" });
+
+            const orderId = oRes.insertId;
+
+            cartItems.forEach((item) => {
+              db.query(
+                `INSERT INTO order_items (order_id, product_id, quantity, price_per_unit)
+                 VALUES (?, ?, ?, ?)`,
+                [orderId, item.product_id, item.quantity, item.price]
+              );
+
+              db.query(`UPDATE products SET quantity = quantity - ? WHERE id = ?`, [
+                item.quantity, item.product_id
+              ]);
+            });
+
+            db.query(
+              `DELETE FROM cart_itemsss WHERE user_id = ? AND product_id IN (${placeholders})`,
+              [userId, ...selectedIds],
+              (dErr) => {
+                if (dErr) return res.status(500).json({ error: "Failed to clear cart" });
+
+                const now = new Date().toISOString().slice(0, 19).replace("T", " ");
+
+                // attach order to transaction + mark paid
+               Transaction.attachOrderToNets(netsRef, orderId, (aErr) => {
+                if (aErr) return res.status(500).json({ error: "Failed to link order to NETS transaction" });
+
+                Transaction.markNetsPaid(netsRef, now, (tErr) => {
+                  if (tErr) return res.status(500).json({ error: "Database error (transactions)" });
+
+                  delete req.session.selectedProducts;
+                  delete req.session.nets_reference;
+                  delete req.session.nets_qr_created_at;
+
+                  return res.json({ success: true, paid: true, orderId });
+                });
+              });
+              }
+            );
+          }
+        );
+      }
+    );
+  } catch (e) {
+    return res.status(500).json({ error: "NETS query error", message: e.message });
+  }
+},
+
+
+
 };
 
 module.exports = PaymentControllers;

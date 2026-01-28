@@ -59,6 +59,59 @@ const Transaction = {
   // ✅ Backward-compat aliases (so no more “not a function”)
   createHitPay: (data, callback) => Transaction.createHitpay(data, callback),
   createHitpayPaynow: (data, callback) => Transaction.createHitpay(data, callback),
+
+   // Nets API
+  createNetsPending: (data, callback) => {
+    const sql = `
+      INSERT INTO \`transaction\`
+      (order_id, user_id, payment_method, payment_status, amount, currency,
+      nets_reference, qr_base64, payer_email, paid_datetime)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    const params = [
+      data.order_id || null,       // ✅ allow null
+      data.user_id,
+      "NETS-QR",
+      "Pending",
+      data.amount,
+      data.currency || "SGD",
+      data.nets_reference,
+      data.qr_base64,
+      data.payer_email || null,
+      data.paid_datetime || null
+    ];
+
+    db.query(sql, params, callback);
+  },
+
+  markNetsPaid: (netsRef, paidDatetime, callback) => {
+    const sql = `
+      UPDATE \`transaction\`
+      SET payment_status = 'Paid', paid_datetime = ?
+      WHERE payment_method = 'NETS-QR' AND nets_reference = ?
+      ORDER BY transaction_id DESC
+      LIMIT 1
+    `;
+
+ 
+
+
+    db.query(sql, [paidDatetime, netsRef], callback);
+  },
+
+    attachOrderToNets: (netsRef, orderId, callback) => {
+    const sql = `
+      UPDATE \`transaction\`
+      SET order_id = ?
+      WHERE payment_method = 'NETS-QR' AND nets_reference = ?
+      ORDER BY transaction_id DESC
+      LIMIT 1
+    `;
+    db.query(sql, [orderId, netsRef], callback);
+  },
+
+
 };
 
 module.exports = Transaction;
