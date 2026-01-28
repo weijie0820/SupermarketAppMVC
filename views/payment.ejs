@@ -89,7 +89,7 @@
       <div class="row g-4">
 
         <!-- PayPal (Popup) -->
-        <div class="col-md-6">
+        <div class="col-md-4">
           <div class="card h-100">
             <div class="card-header">Pay with PayPal</div>
             <div class="card-body">
@@ -107,9 +107,97 @@
             </div>
           </div>
         </div>
+        
+      <!-- HitPay PayNow -->
+      <div class="col-md-4">
+        <div class="card h-100">
+          <div class="card-header">Pay with PayNow (HitPay Sandbox)</div>
+          <div class="card-body">
+            <p class="text-muted">
+              Click generate QR, scan with your banking app, then confirm.
+            </p>
+
+            <button id="hitpay-paynow-generate" class="btn btn-primary w-100">
+              PayNow 
+            </button>
+
+            <!-- ✅ error can show even before QR -->
+            <div id="hitpay-paynow-error" class="alert alert-danger mt-3 d-none"></div>
+
+            <div id="hitpay-paynow-box" class="mt-3 d-none text-center">
+              <p class="mb-2"><strong>Scan to Pay</strong></p>
+              <img id="hitpay-paynow-qr" src="" style="max-width:260px;" alt="PayNow QR">
+
+              <button id="hitpay-paynow-confirm" class="btn btn-outline-dark w-100 mt-3">
+                I Have Paid (Confirm)
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+    <script>
+    (function () {
+      const btnGen = document.getElementById("hitpay-paynow-generate");
+      const box = document.getElementById("hitpay-paynow-box");
+      const img = document.getElementById("hitpay-paynow-qr");
+      const btnConfirm = document.getElementById("hitpay-paynow-confirm");
+      const errBox = document.getElementById("hitpay-paynow-error");
+
+      function showErr(msg) {
+        box.classList.remove("d-none");
+        errBox.textContent = msg;
+        errBox.classList.remove("d-none");
+      }
+
+      function hideErr() {
+        errBox.textContent = "";
+        errBox.classList.add("d-none");
+      }
+
+      if (btnGen) {
+        btnGen.addEventListener("click", async () => {
+          hideErr();
+          const res = await fetch("/api/hitpay/paynow/create", { method: "POST" });
+          const data = await res.json();
+
+          if (!res.ok || !data || !data.checkoutUrl) {
+            showErr((data && (data.message || data.error)) ? (data.message || data.error) : "Failed to start HitPay checkout");
+            return;
+          }
+
+          // ✅ redirect to HitPay hosted checkout (like your screenshot)
+          window.location.href = data.checkoutUrl;
+        });
+      }
+
+      if (btnConfirm) {
+        btnConfirm.addEventListener("click", async () => {
+          hideErr();
+          const res = await fetch("/api/hitpay/paynow/confirm", { method: "POST" });
+          const data = await res.json();
+
+          if (!res.ok) {
+            const msg = (data && (data.error || data.message)) ? (data.error || data.message) : "Payment not completed";
+            showErr(msg + (data && data.status ? (" (status: " + data.status + ")") : ""));
+            return;
+          }
+
+          if (data && data.orderId) {
+            window.location.href = "/order/invoice/" + data.orderId;
+            return;
+          }
+
+          showErr("Payment confirmed but missing orderId.");
+        });
+      }
+    })();
+    </script>
+
 
         <!-- NETS QR (Your routes later) -->
-        <div class="col-md-6">
+        <div class="col-md-4">
           <div class="card h-100">
             <div class="card-header">Pay with NETS QR</div>
             <div class="card-body">
@@ -242,6 +330,8 @@
 
         })();
       </script>
+      <script src="./js/hitpay.js"></script>
+
     <% } %>
   </body>
 </html>

@@ -15,6 +15,8 @@ const ReviewController = require('./controllers/ReviewController');
 const ProductsController = require('./controllers/ProductsControllers');
 const PaymentControllers = require('./controllers/PaymentControllers');
 const paypal = require('./services/paypal');
+const hitpay= require('./services/hitpay');
+
 
 
 
@@ -473,6 +475,100 @@ app.post('/api/paypal/create-order', async (req, res) => {
 
 // PayPal: Capture Order
 app.post('/api/paypal/capture-order', checkAuthenticated, PaymentControllers.capturePaypalOrder);
+
+// HitPay PayNow (hosted checkout + confirm)
+app.post('/api/hitpay/paynow/create', checkAuthenticated, PaymentControllers.createHitpayPaynow);
+app.get('/api/hitpay/paynow/status/:requestId', checkAuthenticated, PaymentControllers.getHitpayPaynowStatus);
+app.post('/api/hitpay/paynow/confirm', checkAuthenticated, PaymentControllers.confirmHitpayPaynow);
+
+// ✅ HitPay redirect_url will come back here after user pays on HitPay page
+app.get('/payment/hitpay/return', checkAuthenticated, async (req, res) => {
+  try {
+    console.log("HITPAY RETURN QUERY =>", req.query);
+
+    const reference =
+      req.query.reference ||
+      req.query.payment_request_id ||
+      req.query.id ||
+      req.query.request_id;
+
+    const statusRaw = (req.query.status || req.query.payment_status || "").toString();
+    const status = statusRaw.trim().toLowerCase();
+
+    if (reference) req.session.hitpay_paynow_request_id = reference;
+
+    const successStatuses = ["completed", "paid", "succeeded", "success"];
+    if (status && !successStatuses.includes(status)) {
+      console.log("HitPay not success status =", status);
+      return res.redirect("/payment");
+    }
+
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+    // ✅ Wrap controller into a Promise that resolves when it calls res.json(...)
+    const confirmOnce = () =>
+      new Promise((resolve) => {
+        let finished = false;
+
+        const originalJson = res.json.bind(res);
+        const originalStatus = res.status.bind(res);
+
+        // Make res.status(...).json(...) still work, but not actually send
+        res.status = (code) => {
+          res._hitpayStatusCode = code;
+          return res;
+        };
+
+        res.json = (data) => {
+          if (finished) return;
+          finished = true;
+
+          // restore originals immediately
+          res.json = originalJson;
+          res.status = originalStatus;
+
+          resolve(data);
+        };
+
+        // call controller (it will call res.json later from db callbacks)
+        PaymentControllers.confirmHitpayPaynow(req, res);
+
+        // safety timeout (in case controller never responds)
+        setTimeout(() => {
+          if (finished) return;
+          finished = true;
+          res.json = originalJson;
+          res.status = originalStatus;
+          resolve(null);
+        }, 8000);
+      });
+
+    for (let attempt = 1; attempt <= 5; attempt++) {
+      const controllerData = await confirmOnce();
+      console.log("confirmHitpayPaynow response =>", controllerData);
+
+      if (controllerData && controllerData.success && controllerData.orderId) {
+        return res.redirect("/order/invoice/" + controllerData.orderId);
+      }
+
+      if (controllerData && controllerData.status === "pending") {
+        await sleep(1500);
+        continue;
+      }
+
+      // any other error / null
+      return res.redirect("/payment");
+    }
+
+    // still pending after retries
+    return res.redirect("/payment");
+  } catch (e) {
+    console.error("HitPay return error =>", e.message);
+    return res.redirect("/payment");
+  }
+});
+
+
 
 
 //order Invoice Route
