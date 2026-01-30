@@ -14,6 +14,7 @@ const OrderControllers = require('./controllers/OrderControllers');
 const ReviewController = require('./controllers/ReviewController');
 const ProductsController = require('./controllers/ProductsControllers');
 const PaymentControllers = require('./controllers/PaymentControllers');
+const CategoriesControllers = require('./controllers/CategoriesControllers');
 const paypal = require('./services/paypal');
 const hitpay= require('./services/hitpay');
 const nets= require('./services/nets');
@@ -413,27 +414,49 @@ app.get("/search", (req, res) => {
 app.get("/shopping", (req, res) => {
     const { price, category } = req.query;
 
-    let sql = "SELECT * FROM products WHERE 1=1";
+    let sql = `
+        SELECT p.*
+        FROM products p
+        LEFT JOIN categories c
+          ON p.category_id = c.category_id
+        WHERE 1=1
+    `;
     let params = [];
 
     // price filter
     if (price) {
         const [min, max] = price.split("-");
-        sql += " AND price BETWEEN ? AND ?";
+        sql += " AND p.price BETWEEN ? AND ?";
         params.push(min, max);
     }
 
-    // category filter
+    // category filter (by name)
     if (category) {
-        sql += " AND category = ?";
+        sql += " AND c.category_name = ?";
         params.push(category);
     }
 
     connection.query(sql, params, (err, products) => {
         if (err) throw err;
-        res.render("shopping", { products, user: req.session.user });
+        res.render("shopping", {
+            products,
+            user: req.session.user
+        });
     });
 });
+
+
+
+//Categories 
+// Admin category management
+app.get("/admin/categories", checkAuthenticated, checkAdmin, CategoriesControllers.list);
+app.post("/admin/categories/create", checkAuthenticated, checkAdmin, CategoriesControllers.create);
+app.post("/admin/categories/update/:id", checkAuthenticated, checkAdmin, CategoriesControllers.update);
+app.post("/admin/categories/delete/:id", checkAuthenticated, checkAdmin, CategoriesControllers.remove);
+
+// Optional: JSON endpoint (sidebar)
+app.get("/api/categories", CategoriesControllers.getAllJson);
+
 
 // --- CART (Database Version) ---
 app.get('/cart', CartControllers.viewCart);
