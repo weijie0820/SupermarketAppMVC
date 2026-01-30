@@ -79,23 +79,43 @@ const CartControllers = {
     // ------------------------------------------------------
     // UPDATE TYPED QUANTITY (e.g. user types 10)
     // ------------------------------------------------------
-    updateQtyTyped(req, res) {
-        const user = req.session.user;
-        if (!user) return res.redirect('/login');
+    // ------------------------------------------------------
+// UPDATE TYPED QUANTITY (e.g. user types 10)
+// ------------------------------------------------------
+updateQtyTyped(req, res) {
+  const user = req.session.user;
+  if (!user) return res.redirect("/login");
 
-        const newQty = parseInt(req.body.quantity);
-        const productId = req.params.id;
+  const productId = req.params.id;
 
-        Cart.updateQuantity(user.id, productId, newQty, (result) => {
-            if (result && result.error) {
-                req.flash("error", result.error);
-                return res.redirect('/cart');
-            }
+  // Support BOTH:
+  // 1) <input name="quantity" ...>
+  // 2) <input name="quantities[PRODUCT_ID]" ...>
+  let qtyRaw = req.body.quantity;
 
-            req.flash("success", "Quantity updated");
-            res.redirect('/cart');
-        });
-    },
+  if (qtyRaw === undefined && req.body.quantities && req.body.quantities[productId] !== undefined) {
+    qtyRaw = req.body.quantities[productId];
+  }
+
+  const newQty = parseInt(qtyRaw, 10);
+
+  // Validation before touching DB
+  if (isNaN(newQty) || newQty < 1) {
+    req.flash("error", "Invalid quantity. Please enter 1 or more.");
+    return res.redirect("/cart");
+  }
+
+  Cart.updateQuantity(user.id, productId, newQty, (result) => {
+    if (result && result.error) {
+      req.flash("error", result.error);
+      return res.redirect("/cart");
+    }
+
+    req.flash("success", "Quantity updated");
+    res.redirect("/cart");
+  });
+},
+
 
     // ------------------------------------------------------
     // UPDATE MULTIPLE FROM CHECKOUT FORM

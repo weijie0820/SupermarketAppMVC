@@ -59,15 +59,8 @@ app.set('view engine', 'ejs');
 //  enable static files
 app.use(express.static('public'));
 // enable form processing
-app.use(express.urlencoded({
-    extended: false
-}));
+app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-
-
-app.use(bodyParser.urlencoded({
-  extended: false
-}));
 
 //TO DO: Insert code for Session Middleware below 
 app.use(session({

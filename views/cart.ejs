@@ -67,26 +67,31 @@
 
                     <td class="qty-box d-flex gap-2 justify-content-center align-items-center">
 
-                        <button formaction="/cart/decrease/<%= item.product_id %>"
+                        <button type="submit"
+                                formaction="/cart/decrease/<%= item.product_id %>"
                                 formmethod="POST"
                                 class="btn btn-outline-danger btn-sm">-</button>
 
                         <input type="number"
-                               name="quantities[<%= item.product_id %>]"
-                               value="<%= item.quantity %>"
-                               min="1"
-                               max="<%= item.stock %>"
-                               class="form-control text-center qty-input">
+                                name="quantity"
+                                value="<%= item.quantity %>"
+                                min="1"
+                                max="<%= item.stock %>"
+                                class="form-control text-center qty-input">
 
-                        <button formaction="/cart/increase/<%= item.product_id %>"
+                        <button type="submit"
+                                formaction="/cart/increase/<%= item.product_id %>"
                                 formmethod="POST"
                                 class="btn btn-outline-success btn-sm">+</button>
 
-                        <button formaction="/cart/update/<%= item.product_id %>"
+                        <button type="submit"
+                                formaction="/cart/update/<%= item.product_id %>"
                                 formmethod="POST"
                                 class="btn btn-primary btn-sm">Update</button>
 
                     </td>
+
+
 
                     <td>$<%= (item.price * item.quantity).toFixed(2) %></td>
 
