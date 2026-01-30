@@ -21,6 +21,7 @@ const nets= require('./services/nets');
 
 
 
+
 // Set up multer for file uploads
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
@@ -474,7 +475,15 @@ app.post('/api/paypal/create-order', async (req, res) => {
 
 
 // PayPal: Capture Order
-app.post('/api/paypal/capture-order', checkAuthenticated, PaymentControllers.capturePaypalOrder);
+app.post('/api/paypal/capture-order', checkAuthenticated, PaymentControllers.capturePaypalOrder)
+app.post("/api/refund/request", checkAuthenticated, PaymentControllers.requestRefund);
+app.get("/refund", checkAuthenticated, checkAdmin, PaymentControllers.viewRefundPage);
+app.post("/api/admin/refund/approve",checkAuthenticated,checkAdmin,PaymentControllers.approveRefund);
+app.post("/api/admin/refund/reject",checkAuthenticated,checkAdmin,PaymentControllers.rejectRefund);
+
+
+
+
 
 // HitPay PayNow (hosted checkout + confirm)
 app.post('/api/hitpay/paynow/create', checkAuthenticated, PaymentControllers.createHitpayPaynow);

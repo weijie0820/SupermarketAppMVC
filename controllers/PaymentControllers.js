@@ -5,10 +5,20 @@ const Payment = require('../models/Payment');
 const Transaction = require('../models/Transaction');
 const hitpay = require("../services/hitpay");
 const nets = require("../services/nets");
-const PAYPAL_BASE = "https://api.sandbox.paypal.com";
+const PAYPAL_BASE = "https://api-m.sandbox.paypal.com";
 const HITPAY_BASE = process.env.HITPAY_BASE || "https://api.sandbox.hit-pay.com";
 const NETS_BASE = process.env.NETS_BASE || "https://sandbox.nets.openapipaas.com";
 const NETS_QR_TIMEOUT_MS = 3 * 60 * 1000;
+require("dotenv").config();
+const mysql = require("mysql2/promise");
+const dbPromise = mysql.createPool({
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+});
+
+
 
 async function getPaypalAccessToken() {
   const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID;
@@ -276,6 +286,245 @@ const PaymentControllers = {
       return res.status(500).json({ error: "Failed to capture PayPal order", message: e.message });
     }
   },
+
+    // ✅ POST /api/paypal/refund
+  refundPaypalCapture: async (req, res) => {
+    try {
+      const userId = req.session.user?.id;
+      if (!userId) return res.status(401).json({ error: "Not logged in" });
+
+      // You can refund by captureId directly OR by your own orderId (recommended)
+      const { orderId, captureId, amount } = req.body;
+
+      if (!captureId && !orderId) {
+        return res.status(400).json({ error: "Provide captureId or orderId" });
+      }
+
+      // 1) Get captureId (if only orderId is provided)
+      let capId = captureId;
+
+      if (!capId) {
+        db.query(
+          `SELECT paypal_capture_id
+          FROM transaction
+          WHERE order_id = ? AND user_id = ? AND payment_method = 'PayPal'
+          ORDER BY transaction_id DESC
+          LIMIT 1`,
+          [orderId, userId],
+          (err, rows) => {
+            if (err) return res.status(500).json({ error: "DB error" });
+            if (!rows || rows.length === 0 || !rows[0].paypal_capture_id) {
+              return res.status(404).json({ error: "Capture ID not found for this order" });
+            }
+            capId = rows[0].paypal_capture_id;
+            return doRefund(capId);
+          }
+        );
+        return;
+      }
+
+      // If captureId is already provided, refund directly
+      return doRefund(capId);
+
+      async function doRefund(captureIdFinal) {
+        const accessToken = await getPaypalAccessToken();
+
+        // 2) Build refund body
+        // Full refund: {}  (PayPal will refund remaining amount)
+        // Partial refund: include amount
+        const body = {};
+        if (amount && Number(amount) > 0) {
+          body.amount = {
+            currency_code: "SGD",
+            value: String(Number(amount).toFixed(2)),
+          };
+        }
+
+        // 3) Call PayPal refund API
+        const refundRes = await axios.post(
+          PAYPAL_BASE + "/v2/payments/captures/" + captureIdFinal + "/refund",
+          body,
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: "Bearer " + accessToken,
+            },
+          }
+        );
+
+        // 4) (Optional but recommended) update your DB status
+        // You can create a new status like "Refunded" or "PartiallyRefunded"
+        // db.query("UPDATE orders SET status='Refunded' WHERE order_id=? AND user_id=?", [orderId, userId]);
+
+          return res.json({
+            success: true,
+            refund: {
+              id: refundRes.data.id,
+              status: refundRes.data.status,
+            },
+          });
+        }
+      } catch (e) {
+        return res.status(500).json({
+          error: "Failed to refund PayPal capture",
+          message: e.response?.data || e.message,
+        });
+      }
+    },
+
+    requestRefund: (req, res) => {
+      const userId = req.session.user?.id;
+      const orderId = Number(req.body.orderId);
+      const reason = String(req.body.reason || "").trim();
+
+      if (!userId) return res.status(401).json({ success:false, error:"Not logged in" });
+      if (!orderId || !reason) return res.status(400).json({ success:false, error:"Missing orderId/reason" });
+
+      db.query(
+        `UPDATE orders
+        SET refund_status='RefundRequested',
+            refund_reason=?,
+            refund_request_at=NOW()
+        WHERE order_id=? AND user_id=? AND status='Paid' AND (refund_status IS NULL OR refund_status='None')`,
+        [reason, orderId, userId],
+        (err, r) => {
+          if (err) return res.status(500).json({ success:false, error:"DB error" });
+          if (!r.affectedRows) return res.status(400).json({ success:false, error:"Order not eligible or already requested" });
+          return res.json({ success:true });
+        }
+      );
+    },
+
+
+      approveRefund: async (req, res) => {
+  let conn;
+
+  try {
+    const orderId = Number(req.body.orderId);
+    if (!orderId) return res.status(400).json({ error: "Missing orderId" });
+
+    // 1) Read capture id + refund status
+    const [rows] = await dbPromise.query(
+      `SELECT t.paypal_capture_id, o.refund_status
+       FROM transaction t
+       JOIN orders o ON o.order_id = t.order_id
+       WHERE t.order_id = ? AND t.payment_method = 'PayPal'
+       ORDER BY t.transaction_id DESC
+       LIMIT 1`,
+      [orderId]
+    );
+
+    if (!rows.length) return res.status(404).json({ error: "PayPal transaction not found" });
+
+    const captureId = rows[0].paypal_capture_id;
+    const refundStatus = rows[0].refund_status;
+
+    if (!captureId) return res.status(400).json({ error: "Missing PayPal capture id" });
+
+    // Only allow approve when it's requested
+    if (refundStatus !== "RefundRequested") {
+      return res.status(400).json({ error: "Invalid refund state" });
+    }
+
+    // 2) Call PayPal refund
+    // If PayPal says "already fully refunded", treat as OK and continue DB sync
+    try {
+      const token = await getPaypalAccessToken();
+
+      await axios.post(
+        PAYPAL_BASE + "/v2/payments/captures/" + captureId + "/refund",
+        {}, // full refund
+        {
+          headers: {
+            Authorization: "Bearer " + token,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    } catch (ppErr) {
+      const issue = ppErr.response?.data?.details?.[0]?.issue;
+
+      if (issue !== "CAPTURE_FULLY_REFUNDED") {
+        console.log("Refund status:", ppErr.response?.status);
+        console.log("Refund data:", JSON.stringify(ppErr.response?.data, null, 2));
+        return res.status(500).json({
+          error: "PayPal refund failed",
+          paypal: ppErr.response?.data,
+        });
+      }
+
+      // ✅ PayPal already refunded: continue to DB update + restock
+      console.log("PayPal says capture already fully refunded; syncing DB...");
+    }
+
+    // 3) DB sync + restock (atomic)
+    conn = await dbPromise.getConnection();
+    try {
+      await conn.beginTransaction();
+
+      // Mark order refunded
+      await conn.query(
+        `UPDATE orders
+         SET refund_status = 'Refunded'
+         WHERE order_id = ?`,
+        [orderId]
+      );
+
+      // Restock products from order_items
+      await conn.query(
+        `UPDATE products p
+         JOIN order_items oi ON oi.product_id = p.id
+         SET p.quantity = p.quantity + oi.quantity
+         WHERE oi.order_id = ?`,
+        [orderId]
+      );
+
+      await conn.commit();
+    } catch (dbErr) {
+      await conn.rollback();
+      throw dbErr;
+    } finally {
+      conn.release();
+    }
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("approveRefund error =>", err);
+    if (conn) try { conn.release(); } catch {}
+    return res.status(500).json({ error: "Server error", message: err.message });
+  }
+},
+
+
+
+
+  rejectRefund: (req, res) => {
+    const { orderId, rejectReason } = req.body;
+
+    db.query(
+      `UPDATE orders
+      SET refund_status='RefundRejected',
+          refund_reject_reason=?
+      WHERE order_id=?`,
+      [rejectReason, orderId],
+      () => res.json({ success:true })
+    );
+  },
+
+    viewRefundPage: (req, res) => {
+    db.query(
+      `SELECT order_id, user_id, refund_reason, refund_status
+      FROM orders
+      WHERE refund_status = 'RefundRequested'
+      ORDER BY refund_request_at DESC`,
+      [],
+      (err, rows) => {
+        if (err) return res.status(500).send("DB error");
+        return res.render("refund", { refunds: rows });
+      }
+    );
+  },
+
 
   // ✅ POST /api/hitpay/paynow/create
   createHitpayPaynow: async (req, res) => {
@@ -555,14 +804,37 @@ const PaymentControllers = {
   try {
     const qRes = await nets.queryNetsQr(netsRef);
     const data = qRes?.result?.data || {};
-    const responseCode = String(data.response_code || "");
 
-    if (responseCode === "09") {
-      return res.json({ success: true, paid: false, expired: false, status: "pending" });
+    const responseCode = String(data?.response_code || "");
+    const txnStatus = String(data?.txn_status || "");
+
+    // 1️⃣ Still pending (most common)
+    if (responseCode === "09" || txnStatus === "1") {
+      return res.json({
+        success: true,
+        paid: false,
+        expired: false,
+        status: "pending",
+        responseCode,
+        txnStatus
+      });
     }
 
-    if (responseCode !== "00") {
-      return res.json({ success: true, paid: false, expired: false, status: "not_paid" });
+    // 2️⃣ Paid / success (NETS sandbox usually uses txn_status = 2)
+    if (txnStatus === "2" || responseCode === "00") {
+      // 👉 fall through to order creation below
+    }
+
+    // 3️⃣ Anything else = not paid / failed
+    else {
+      return res.json({
+        success: true,
+        paid: false,
+        expired: false,
+        status: "not_paid",
+        responseCode,
+        txnStatus
+      });
     }
 
     // ✅ PAID: Now create the order

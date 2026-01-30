@@ -101,30 +101,56 @@ const CartControllers = {
     // UPDATE MULTIPLE FROM CHECKOUT FORM
     // ------------------------------------------------------
     updateMultiple(req, res) {
-        const user = req.session.user;
-        if (!user) return res.redirect('/login');
+    const user = req.session.user;
+    if (!user) return res.redirect('/login');
 
-        const quantities = req.body.quantities;
+    const quantities = req.body.quantities || {};
+    const entries = Object.entries(quantities);
 
-        const tasks = Object.entries(quantities).map(([productId, qty]) => {
-            return new Promise((resolve, reject) => {
-                Cart.updateQuantity(user.id, productId, parseInt(qty), (result) => {
-                    if (result && result.error) reject(result.error);
-                    else resolve();
-                });
-            });
+    // Nothing to update
+    if (entries.length === 0) {
+        req.flash("error", "Nothing to update");
+        return res.redirect("/cart");
+    }
+
+    let index = 0;
+    let stopped = false;
+
+    const runNext = () => {
+        if (stopped) return;
+
+        // done all updates
+        if (index >= entries.length) {
+            req.flash("success", "Cart updated");
+            return res.redirect("/cart");
+        }
+
+        const productId = entries[index][0];
+        const qtyRaw = entries[index][1];
+        const qty = parseInt(qtyRaw, 10);
+
+        // basic validation
+        if (isNaN(qty) || qty < 1) {
+            stopped = true;
+            req.flash("error", "Invalid quantity for product " + productId);
+            return res.redirect("/cart");
+        }
+
+        Cart.updateQuantity(user.id, productId, qty, (result) => {
+            // keep your existing result.error convention
+            if (result && result.error) {
+                stopped = true;
+                req.flash("error", result.error);
+                return res.redirect("/cart");
+            }
+
+            index++;
+            runNext();
         });
+    };
 
-        Promise.all(tasks)
-            .then(() => {
-                req.flash("success", "Cart updated");
-                res.redirect('/cart');
-            })
-            .catch(err => {
-                req.flash("error", err);
-                res.redirect('/cart');
-            });
-    },
+    runNext();
+},
 
     // ------------------------------------------------------
     // REMOVE PRODUCT FROM CART
