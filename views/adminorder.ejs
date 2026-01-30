@@ -1,0 +1,43 @@
+<%- include("partials/navbar") %>
+
+<div class="container my-4">
+  <h2>All Member Orders</h2>
+
+  <form class="d-flex my-3" method="GET" action="/admin/orders">
+    <input class="form-control me-2" name="q" value="<%= q %>" placeholder="Search by order id / username / email">
+    <button class="btn btn-dark" type="submit">Search</button>
+  </form>
+
+  <table class="table table-striped align-middle">
+    <thead>
+      <tr>
+        <th>Order ID</th>
+        <th>Date</th>
+        <th>Member</th>
+        <th>Total</th>
+        <th>Status</th>
+        <th>Refund</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (!orders || orders.length === 0) { %>
+        <tr><td colspan="7">No orders found.</td></tr>
+      <% } %>
+
+      <% orders.forEach(o => { %>
+        <tr>
+          <td>#<%= o.order_id %></td>
+          <td><%= o.created_at %></td>
+          <td><%= o.username %> (<%= o.email %>)</td>
+          <td>$<%= Number(o.total_amount || 0).toFixed(2) %></td>
+          <td><%= o.status %></td>
+          <td><%= o.refund_status || "-" %></td>
+          <td>
+            <a href="/admin/orders/<%= o.order_id %>">View Details</a>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>

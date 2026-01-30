@@ -1,0 +1,83 @@
+<%- include("partials/navbar") %>
+
+<div class="container my-4">
+  <a href="/admin/orders">&larr; Back to Orders</a>
+
+  <h2 class="mt-3">Order #<%= order.order_id %></h2>
+
+  <div class="card my-3">
+    <div class="card-body">
+      <p><b>Date:</b> <%= order.created_at %></p>
+      <p><b>Member:</b> <%= order.username %> (<%= order.email %>)</p>
+      <p><b>Status:</b> <%= order.status %></p>
+      <p><b>Refund Status:</b> <%= order.refund_status || "-" %></p>
+      <p><b>Total:</b> $<%= Number(order.total_amount || 0).toFixed(2) %></p>
+    </div>
+  </div>
+
+  <h4>Items</h4>
+  <table class="table table-bordered align-middle">
+    <thead>
+      <tr>
+        <th>Product</th>
+        <th>Image</th>
+        <th>Qty</th>
+        <th>Unit Price</th>
+        <th>Line Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (!items || items.length === 0) { %>
+        <tr><td colspan="5">No items found for this order.</td></tr>
+      <% } %>
+
+      <% items.forEach(it => { %>
+        <tr>
+          <td><%= it.productName %></td>
+          <td>
+          <td>
+            <% if (it.image) { %>
+                <img src="/images/<%= it.image %>" width="80">
+            <% } else { %>
+                -
+            <% } %>
+            </td>
+          <td><%= it.quantity %></td>
+          <td>$<%= Number(it.price_per_unit || 0).toFixed(2) %></td>
+        <td>$<%= Number(it.line_total || 0).toFixed(2) %></td>
+
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+
+  <h4 class="mt-4">Latest Payment / Transaction</h4>
+  <div class="card">
+    <div class="card-body">
+      <% if (!txn) { %>
+        <p>No transaction record found.</p>
+      <% } else { %>
+        <p><b>Method:</b> <%= txn.payment_method %></p>
+        <p><b>Status:</b> <%= txn.payment_status %></p>
+        <p><b>Currency:</b> <%= txn.currency %></p>
+        <p><b>Payer Email:</b> <%= txn.payer_email || "-" %></p>
+        <p><b>Paid Time:</b> <%= txn.paid_datetime || "-" %></p>
+        <p><b>Created:</b> <%= txn.created_at || "-" %></p>
+        <p><b>Amount:</b> $<%= Number(txn.amount || 0).toFixed(2) %></p>
+        <p><b>Created:</b> <%= txn.created_at %></p>
+
+        <% if (txn.paypal_capture_id) { %>
+          <p><b>PayPal Capture ID:</b> <%= txn.paypal_capture_id %></p>
+        <% } %>
+
+        <% if (txn.nets_reference) { %>
+          <p><b>NETS Reference:</b> <%= txn.nets_reference %></p>
+        <% } %>
+
+        <% if (txn.hitpay_request_id) { %>
+          <p><b>HitPay Request ID:</b> <%= txn.hitpay_request_id %></p>
+        <% } %>
+      <% } %>
+    </div>
+  </div>
+</div>

@@ -5,6 +5,8 @@ const nodemailer = require('nodemailer');
 // =========================
 // Email OTP Helper
 // =========================
+
+
 const otpCache = {};
 
 function setOTP(email, otp, ttl = 3 * 60 * 1000) {
@@ -217,11 +219,161 @@ const UserControllers = {
         );
     },
 
+    // ---------- Admin: List ALL orders ----------
+        adminListOrders(req, res) {
+        const q = (req.query.q || "").trim();
+
+        const sql = `
+            SELECT
+            o.order_id,
+            o.order_date,
+            o.total_amount,
+            o.status,
+            o.payment_method,
+            o.invoice_number,
+            o.refund_status,
+            u.id AS user_id,
+            u.username,
+            u.email
+            FROM orders o
+            JOIN users u ON u.id = o.user_id
+            WHERE u.is_deleted = 0
+            AND (
+                ? = ''
+                OR o.order_id = ?
+                OR u.username LIKE ?
+                OR u.email LIKE ?
+            )
+            ORDER BY o.order_date DESC
+        `;
+
+        const params = [q, q, "%" + q + "%", "%" + q + "%"];
+
+        connection.query(sql, params, (err, rows) => {
+            if (err) {
+            console.log("adminListOrders SQL error:", err);
+            return res.status(500).send(err.sqlMessage || "DB error");
+            }
+
+            res.render("adminorder", {
+            orders: rows,
+            q,
+            user: req.session.user
+            });
+        });
+        },
+
+
+        // ---------- Admin: Order details ----------
+        adminOrderDetails(req, res) {
+        const orderId = Number(req.params.orderId);
+
+        const orderSql = `
+            SELECT
+            o.order_id,
+            o.user_id,
+            o.order_date,
+            o.total_amount,
+            o.status,
+            o.payment_method,
+            o.invoice_number,
+            o.paid_at,
+            o.updated_at,
+            o.refund_status,
+            o.refund_reason,
+            o.refund_request_at,
+            o.refund_decision_at,
+            o.refund_decision_by,
+            o.refund_reject_reason,
+            u.username,
+            u.email
+            FROM orders o
+            JOIN users u ON u.id = o.user_id
+            WHERE o.order_id = ?
+            LIMIT 1
+        `;
+
+        const itemsSql = `
+            SELECT
+                oi.order_item_id,
+                oi.order_id,
+                oi.product_id,
+                p.productName,
+                p.image,
+                oi.quantity,
+                oi.price_per_unit,
+                (oi.quantity * oi.price_per_unit) AS line_total,
+                oi.created_at
+            FROM order_items oi
+            JOIN products p ON p.id = oi.product_id
+            WHERE oi.order_id = ?
+            `;
+
+
+        const txnSql = `
+            SELECT
+            t.transaction_id,
+            t.order_id,
+            t.user_id,
+            t.payment_method,
+            t.payment_status,
+            t.amount,
+            t.currency,
+            t.paypal_order_id,
+            t.paypal_capture_id,
+            t.nets_reference,
+            t.hitpay_request_id,
+            t.payer_email,
+            t.paid_datetime,
+            t.created_at
+            FROM \`transaction\` t
+            WHERE t.order_id = ?
+            ORDER BY t.transaction_id DESC
+            LIMIT 1
+        `;
+
+        connection.query(orderSql, [orderId], (err, orderRows) => {
+            if (err) {
+            console.log("adminOrderDetails orderSql error:", err);
+            return res.status(500).send(err.sqlMessage || "DB error (order)");
+            }
+            if (!orderRows || !orderRows[0]) return res.status(404).send("Order not found");
+
+            const order = orderRows[0];
+
+            connection.query(itemsSql, [orderId], (err2, itemRows) => {
+            if (err2) {
+                console.log("adminOrderDetails itemsSql error:", err2);
+                return res.status(500).send(err2.sqlMessage || "DB error (items)");
+            }
+
+            connection.query(txnSql, [orderId], (err3, txnRows) => {
+                if (err3) {
+                console.log("adminOrderDetails txnSql error:", err3);
+                return res.status(500).send(err3.sqlMessage || "DB error (transaction)");
+                }
+
+                res.render("adminorder_details", {
+                order,
+                items: itemRows,
+                txn: (txnRows && txnRows[0]) ? txnRows[0] : null,
+                user: req.session.user
+                });
+            });
+            });
+        });
+        },
+
+
+
     // ---------- Logout ----------
     logout(req, res) {
         req.session.destroy();
         res.redirect("/");
     }
 };
+
+
+
 
 module.exports = UserControllers;

@@ -473,6 +473,7 @@ app.get('/checkout', OrderControllers.showCheckout);
 app.post('/order/create', OrderControllers.createOrder);
 app.post('/checkout', OrderControllers.showCheckout);
 
+
 //Payment Route
 app.get('/payment', checkAuthenticated, PaymentControllers.showPaymentPage);
 app.get('/payment/:id', checkAuthenticated, PaymentControllers.showPaymentPage);
@@ -672,6 +673,16 @@ app.post('/admin/users/update-role', checkAuthenticated, checkAdmin, UserControl
 
 // Delete user
 app.post('/admin/users/delete', checkAuthenticated, checkAdmin, UserControllers.deleteUser);
+
+console.log("typeof checkAdmin =", typeof checkAdmin);
+console.log("typeof UserControllers.adminListOrders =", typeof UserControllers.adminListOrders);
+console.log("typeof UserControllers.adminOrderDetails =", typeof UserControllers.adminOrderDetails);
+
+// Admin - View all orders + details
+app.get("/admin/orders", checkAdmin, UserControllers.adminListOrders);
+app.get("/admin/orders/:orderId", checkAdmin, UserControllers.adminOrderDetails);
+
+
 
 
 
