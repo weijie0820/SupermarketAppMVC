@@ -493,6 +493,8 @@ app.post('/api/paypal/create-order', async (req, res) => {
 
 // PayPal: Capture Order
 app.post('/api/paypal/capture-order', checkAuthenticated, PaymentControllers.capturePaypalOrder)
+
+// Refund Routes
 app.post("/api/refund/request", checkAuthenticated, PaymentControllers.requestRefund);
 app.get("/refund", checkAuthenticated, checkAdmin, PaymentControllers.viewRefundPage);
 app.post("/api/admin/refund/approve",checkAuthenticated,checkAdmin,PaymentControllers.approveRefund);
